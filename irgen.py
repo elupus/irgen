@@ -3,7 +3,7 @@ from base64 import b64encode
 import binascii
 
 
-def gen_raw_nec(variant, device, subdevice, obc):
+def gen_raw_nec(protocol, device, subdevice, function):
 
     logical_bit  = 562.5
 
@@ -19,7 +19,7 @@ def gen_raw_nec(variant, device, subdevice, obc):
             if s == '1': yield logical_bit * -3 # one  is encoded by 3 length
             else:        yield logical_bit * -1 # zero is encoded by 1 lengths
 
-    if variant in ('nec1', 'necx1'):
+    if protocol in ('nec1', 'necx1'):
         yield logical_bit * 16 # leading burst
     else:
         yield logical_bit * 8 # leading burst
@@ -27,14 +27,19 @@ def gen_raw_nec(variant, device, subdevice, obc):
     yield logical_bit *  -8 # space before data
 
     yield from encode(device)
-    if variant in ('necx1', 'necx2')
+    if protocol in ('necx1', 'necx2'):
         yield from encode(subdevice)
     else:
         yield from encode(~device)
-    yield from encode(obc)
-    yield from encode(~obc)
+    yield from encode(function)
+    yield from encode(~function)
     yield logical_bit       # Trailing burst
     yield logical_bit * -3  # Trailing zero to separate
+
+
+def gen_raw_general(protocol, device, subdevice, function, **kwargs):
+    if protocol.lower() in ('nec1', 'necx1', 'nec2', 'necx2'):
+        yield from gen_raw_nec(protocol.lower(), int(device), int(subdevice), int(function))
 
 
 # combine successive same sign value, drop zeros, drop leading negative
@@ -85,29 +90,49 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate IR code')
     parser.add_argument('-i', '--input', dest='input', type=str,
                         required=True,
-                        help='Input type',
-                        choices=['nec1', 'necx1', 'nec2', 'necx2', 'raw'])
+                        help='Input protocol',
+                        choices=['nec1', 'necx1', 'nec2', 'necx2', 'raw', 'irdb'])
     parser.add_argument('-o', '--output', dest='output', type=str, 
                         required=True,
-                        help='Output type',
+                        help='Output protocol',
                         choices=['broadlink', 'raw'])
 
     parser.add_argument('-d', '--data', dest='data',
-                        required=True,
                         type=int,
                         nargs='+',
                         help='Data')
 
+    parser.add_argument('-p', '--path', dest='path',
+                        help='Device path used for irdb download')
+
     args = parser.parse_args()
 
-    if args.input in ('nec1', 'necx1', 'nec2', 'necx2'):
-        raw = gen_raw_nec(args.input, *args.data)
-    if args.input == 'raw':
-        raw = args.data
+    raw = []
+    if args.input in 'irdb':
+        base = 'http://cdn.rawgit.com/probonopd/irdb/master/codes'
+        import csv
+        import requests
+        with requests.Session() as s:
+            download = s.get('{}/{}'.format(base, args.path))
+            content  = download.content.decode('utf-8')
+            for row in csv.DictReader(content.splitlines(), delimiter=','):
+                ir = gen_raw_general(**row)
+                code = (row['functionname'], gen_raw_general(**row))
+                raw.append(code)
+
+    elif args.input == 'raw':
+        code = ('', raw)
+        raw.append(args.data)
+    else:
+        code = ('', gen_raw_general(args.input, *args.data))
+        raw.append(code)
+
 
     if args.output == 'broadlink':
-        v = bytes(gen_broadlink_from_raw(raw))
-        print(v.hex())
+        for r in raw:
+            v = bytes(gen_broadlink_from_raw(r[1]))
+            print(v.hex())
     elif args.output == 'raw':
-        print(list(raw))
+        for r in raw:
+            print(list(r[1]))
 

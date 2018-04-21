@@ -3,7 +3,7 @@ from base64 import b64encode
 import binascii
 
 
-def gen_raw_nec2x(device, subdevice, obc):
+def gen_raw_nec(variant, device, subdevice, obc):
 
     logical_bit  = 562.5
 
@@ -19,12 +19,18 @@ def gen_raw_nec2x(device, subdevice, obc):
             if s == '1': yield logical_bit * -3 # one  is encoded by 3 length
             else:        yield logical_bit * -1 # zero is encoded by 1 lengths
 
+    if variant in ('nec1', 'necx1'):
+        yield logical_bit * 16 # leading burst
+    else:
+        yield logical_bit * 8 # leading burst
 
-    yield logical_bit *  -16 # leading burst
     yield logical_bit *  -8 # space before data
 
     yield from encode(device)
-    yield from encode(subdevice)
+    if variant in ('necx1', 'necx2')
+        yield from encode(subdevice)
+    else:
+        yield from encode(~device)
     yield from encode(obc)
     yield from encode(~obc)
     yield logical_bit       # Trailing burst
@@ -80,7 +86,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--input', dest='input', type=str,
                         required=True,
                         help='Input type',
-                        choices=['nec', 'raw'])
+                        choices=['nec1', 'necx1', 'nec2', 'necx2', 'raw'])
     parser.add_argument('-o', '--output', dest='output', type=str, 
                         required=True,
                         help='Output type',
@@ -94,8 +100,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.input == 'nec':
-        raw = gen_raw_nec2x(*args.data)
+    if args.input in ('nec1', 'necx1', 'nec2', 'necx2'):
+        raw = gen_raw_nec(args.input, *args.data)
     if args.input == 'raw':
         raw = args.data
 

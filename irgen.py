@@ -80,55 +80,28 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--input', dest='input', type=str,
                         required=True,
                         help='Input type',
-                        choices=['nec'])
+                        choices=['nec', 'raw'])
     parser.add_argument('-o', '--output', dest='output', type=str, 
                         required=True,
                         help='Output type',
-                        choices=['broadlink'])
+                        choices=['broadlink', 'raw'])
 
-    parser.add_argument('-d', '--device', dest='device',
+    parser.add_argument('-d', '--data', dest='data',
                         required=True,
                         type=int,
-                        help='Device')
+                        nargs='+',
+                        help='Data')
 
-    parser.add_argument('-s', '--subdevice', dest='subdevice',
-                        required=True,
-                        type=int,
-                        help='Sub device')
-
-    parser.add_argument('-c', '--command', dest='command',
-                        required=True,
-                        type=int,
-                        help='Command')
     args = parser.parse_args()
 
-    raw = []
     if args.input == 'nec':
-        raw = gen_raw_nec2x(args.device, args.subdevice, args.command)
-
+        raw = gen_raw_nec2x(*args.data)
+    if args.input == 'raw':
+        raw = args.data
 
     if args.output == 'broadlink':
         v = bytes(gen_broadlink_from_raw(raw))
         print(v.hex())
+    elif args.output == 'raw':
+        print(list(raw))
 
-    #v = list(gen_raw_nec2x(7, 7, 17))
-    #print(v)
-
-    #print(' '.join([str(int(x)) for x in v]))
-
-
-
-    #v = bytes(gen_broadlink_from_raw(v))
-    #print(v.hex())
-    #print(binascii.hexlify(v))
-
-    #print(bytes(gen_broadlink_from_raw([1000, -100])).hex())
-    #print(bytes(gen_broadlink_from_raw([1000,  100])).hex())
-
-
-    #print(list(simplify_raw([-1, 1, 2, -3, -1])))
-
-    #d = [hex(int(i / 32.84)) for i in v]
-    #print(d)
-    #d = [hex(int(i * 269 / 8192)) for i in v]
-    #print(d)

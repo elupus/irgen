@@ -3,9 +3,22 @@ from base64 import b64encode
 import binascii
 
 
+
+gen_raw_nec_protocols_standard = ['nec1',
+                                  'nec2',
+                                  'necx1',
+                                  'necx2']
+gen_raw_nec_protocols_suffixes = ['',
+                                  '-y1',
+                                  '-y2',
+                                  '-y3',
+                                  '-f16']
+gen_raw_nec_protocols = list(x+y for x in gen_raw_nec_protocols_standard for y in gen_raw_nec_protocols_suffixes)
 def gen_raw_nec(protocol, device, subdevice, function):
 
     logical_bit  = 562.5
+
+    protocol_base, protocol_suffix = (protocol.split('-') + [None])[:2]
 
     def u8_to_bin(v):
         if(v < 0):
@@ -19,7 +32,7 @@ def gen_raw_nec(protocol, device, subdevice, function):
             if s == '1': yield logical_bit * -3 # one  is encoded by 3 length
             else:        yield logical_bit * -1 # zero is encoded by 1 lengths
 
-    if protocol in ('nec1', 'necx1'):
+    if protocol_base in ('nec1', 'necx1'):
         yield logical_bit * 16 # leading burst
     else:
         yield logical_bit * 8 # leading burst
@@ -27,18 +40,29 @@ def gen_raw_nec(protocol, device, subdevice, function):
     yield logical_bit *  -8 # space before data
 
     yield from encode(device)
-    if protocol in ('necx1', 'necx2'):
+    if subdevice >= 0:
         yield from encode(subdevice)
     else:
         yield from encode(~device)
-    yield from encode(function)
-    yield from encode(~function)
+
+    yield from encode(function & 0xFF)
+    if protocol_suffix == 'y1':    # Yamaha special version 1
+        yield from encode(function ^ 0x7F)
+    elif protocol_suffix == 'y2':  # Yamaha special version 2
+        yield from encode(function ^ 0xFE)
+    elif protocol_suffix == 'y3':  # Yamaha special version 3
+        yield from encode(function ^ 0x7E)
+    elif protocol_suffix == 'f16': # 16 bit function
+        yield from encode((function >> 8) & 0xFF) 
+    else:                           # Standard invert
+        yield from encode(function ^ 0xFF)
+
     yield logical_bit       # Trailing burst
     yield logical_bit * -3  # Trailing zero to separate
 
 
 def gen_raw_general(protocol, device, subdevice, function, **kwargs):
-    if protocol.lower() in ('nec1', 'necx1', 'nec2', 'necx2'):
+    if protocol.lower() in gen_raw_nec_protocols:
         yield from gen_raw_nec(protocol.lower(), int(device), int(subdevice), int(function))
 
 
@@ -79,25 +103,30 @@ def gen_broadlink_from_raw(data):
             yield from encode_one(i)
 
     c = bytearray(encode_list(data))
-    yield from len(c).to_bytes(2, byteorder='little')
+    l = len(c)
+    yield from l.to_bytes(2, byteorder='little')
     yield from c
     yield from b'\x0d'
     yield from b'\x05'
 
+    # calculate total length for padding
+    l += 6 # header+len+trailer
+    l += 4 # rm.send_data() 4 byte header (not seen here)
+    yield from bytearray(16 - (l % 16))
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Generate IR code')
-    parser.add_argument('-i', '--input', dest='input', type=str,
+    parser.add_argument('-i', dest='input', type=str,
                         required=True,
                         help='Input protocol',
-                        choices=['nec1', 'necx1', 'nec2', 'necx2', 'raw', 'irdb'])
-    parser.add_argument('-o', '--output', dest='output', type=str, 
+                        choices=[*gen_raw_nec_protocols, 'raw', 'irdb'])
+    parser.add_argument('-o', dest='output', type=str, 
                         required=True,
                         help='Output protocol',
-                        choices=['broadlink', 'raw'])
+                        choices=['broadlink', 'broadlink_hass', 'raw'])
 
-    parser.add_argument('-d', '--data', dest='data',
+    parser.add_argument('-d', dest='data',
                         type=int,
                         nargs='+',
                         help='Data')
@@ -109,9 +138,10 @@ if __name__ == '__main__':
 
     raw = []
     if args.input in 'irdb':
-        base = 'http://cdn.rawgit.com/probonopd/irdb/master/codes'
         import csv
         import requests
+
+        base = 'http://cdn.rawgit.com/probonopd/irdb/master/codes'
         with requests.Session() as s:
             download = s.get('{}/{}'.format(base, args.path))
             content  = download.content.decode('utf-8')
@@ -121,10 +151,13 @@ if __name__ == '__main__':
                 raw.append(code)
 
     elif args.input == 'raw':
-        code = ('', raw)
-        raw.append(args.data)
+        functionname = '{}({})'.format(args.input, ','.join(map(str,args.data)))
+        code         = (functionname, args.data)
+        raw.append(code)
     else:
-        code = ('', gen_raw_general(args.input, *args.data))
+        functionname = '{}({})'.format(args.input, ','.join(map(str,args.data)))
+        data         = gen_raw_general(args.input, *args.data)
+        code         = (functionname, data)
         raw.append(code)
 
 
@@ -132,6 +165,22 @@ if __name__ == '__main__':
         for r in raw:
             v = bytes(gen_broadlink_from_raw(r[1]))
             print(v.hex())
+
+    if args.output == 'broadlink_hass':
+        from base64      import b64encode
+        from collections import OrderedDict
+        from yaml        import dump, safe_dump
+
+
+        switch = dict()
+        switch['switches'] = dict()
+        for r in raw:
+            v = bytes(gen_broadlink_from_raw(r[1]))
+            entity = dict()
+            entity['command_on']  = b64encode(v).decode()
+            switch['switches'][r[0]] = entity
+        print(safe_dump(switch, allow_unicode=True, default_flow_style=False))
+
     elif args.output == 'raw':
         for r in raw:
             print(list(r[1]))

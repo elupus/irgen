@@ -3,8 +3,6 @@ from base64 import b64encode, b64decode
 import binascii
 from itertools import islice
 
-
-
 gen_raw_nec_protocols_standard = ['nec1',
                                   'nec2',
                                   'necx1',
@@ -14,10 +12,14 @@ gen_raw_nec_protocols_suffixes = ['',
                                   '-y2',
                                   '-y3',
                                   '-f16']
-gen_raw_nec_protocols = list(x+y for x in gen_raw_nec_protocols_standard for y in gen_raw_nec_protocols_suffixes)
+
+gen_raw_nec_protocols = list(x + y for x in gen_raw_nec_protocols_standard
+                             for y in gen_raw_nec_protocols_suffixes)
+
+
 def gen_raw_nec(protocol, device, subdevice, function):
 
-    logical_bit  = 562.5
+    logical_bit = 562.5
 
     protocol_base, protocol_suffix = (protocol.split('-') + [None])[:2]
 
@@ -29,16 +31,18 @@ def gen_raw_nec(protocol, device, subdevice, function):
     def encode(value):
         b = u8_to_bin(value)
         for s in reversed(b):
-            yield logical_bit # burst
-            if s == '1': yield logical_bit * -3 # one  is encoded by 3 length
-            else:        yield logical_bit * -1 # zero is encoded by 1 lengths
+            yield logical_bit  # burst
+            if s == '1':
+                yield logical_bit * -3  # one  is encoded by 3 length
+            else:
+                yield logical_bit * -1  # zero is encoded by 1 lengths
 
     if protocol_base in ('nec1', 'necx1'):
-        yield logical_bit * 16 # leading burst
+        yield logical_bit * 16  # leading burst
     else:
-        yield logical_bit * 8 # leading burst
+        yield logical_bit * 8   # leading burst
 
-    yield logical_bit *  -8 # space before data
+    yield logical_bit * -8     # space before data
 
     yield from encode(device)
     if subdevice >= 0:
@@ -47,14 +51,14 @@ def gen_raw_nec(protocol, device, subdevice, function):
         yield from encode(~device)
 
     yield from encode(function & 0xFF)
-    if protocol_suffix == 'y1':    # Yamaha special version 1
+    if protocol_suffix == 'y1':     # Yamaha special version 1
         yield from encode(function ^ 0x7F)
-    elif protocol_suffix == 'y2':  # Yamaha special version 2
+    elif protocol_suffix == 'y2':   # Yamaha special version 2
         yield from encode(function ^ 0xFE)
-    elif protocol_suffix == 'y3':  # Yamaha special version 3
+    elif protocol_suffix == 'y3':   # Yamaha special version 3
         yield from encode(function ^ 0x7E)
-    elif protocol_suffix == 'f16': # 16 bit function
-        yield from encode((function >> 8) & 0xFF) 
+    elif protocol_suffix == 'f16':  # 16 bit function
+        yield from encode((function >> 8) & 0xFF)
     else:                           # Standard invert
         yield from encode(function ^ 0xFF)
 
@@ -64,7 +68,10 @@ def gen_raw_nec(protocol, device, subdevice, function):
 
 def gen_raw_general(protocol, device, subdevice, function, **kwargs):
     if protocol.lower() in gen_raw_nec_protocols:
-        yield from gen_raw_nec(protocol.lower(), int(device), int(subdevice), int(function))
+        yield from gen_raw_nec(protocol.lower(),
+                               int(device),
+                               int(subdevice),
+                               int(function))
 
 
 # combine successive same sign value, drop zeros, drop leading negative
@@ -84,7 +91,6 @@ def gen_simplified_from_raw(x):
             yield l
             l = i
     yield l
-
 
 
 def gen_raw_from_broadlink(data):
@@ -117,11 +123,11 @@ def gen_raw_from_broadlink_base64(data):
 
 
 def gen_broadlink_from_raw(data):
-    yield from b'\x26' #IR
-    yield from b'\x00' #Repeat
+    yield from b'\x26'  # IR
+    yield from b'\x00'  # Repeat
 
     def encode_one(x):
-        #v = abs(int(i / 32.84))
+        # v = abs(int(i / 32.84))
         v = abs(int(x * 269 / 8192))
         if v > 255:
             yield from b'\x00'
@@ -141,9 +147,10 @@ def gen_broadlink_from_raw(data):
     yield from b'\x05'
 
     # calculate total length for padding
-    l += 6 # header+len+trailer
-    l += 4 # rm.send_data() 4 byte header (not seen here)
+    l += 6  # header+len+trailer
+    l += 4  # rm.send_data() 4 byte header (not seen here)
     yield from bytearray(16 - (l % 16))
+
 
 def gen_hass_entityname(text):
     text = text.lower()
@@ -155,17 +162,25 @@ def gen_hass_entityname(text):
     text = text.strip("_")
     return text
 
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Generate IR code')
     parser.add_argument('-i', dest='input', type=str,
                         required=True,
                         help='Input protocol',
-                        choices=[*gen_raw_nec_protocols, 'raw', 'irdb', 'broadlink_base64'])
-    parser.add_argument('-o', dest='output', type=str, 
+                        choices=[*gen_raw_nec_protocols,
+                                 'raw',
+                                 'irdb',
+                                 'broadlink'
+                                 'broadlink_base64'])
+    parser.add_argument('-o', dest='output', type=str,
                         required=True,
                         help='Output protocol',
-                        choices=['broadlink', 'broadlink_hass', 'broadlink_base64', 'raw'])
+                        choices=['broadlink',
+                                 'broadlink_hass',
+                                 'broadlink_base64',
+                                 'raw'])
 
     parser.add_argument('-d', dest='data',
                         nargs='+',
@@ -177,6 +192,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     codes = []
+
+    # Parse input data
     if args.input in 'irdb':
         import csv
         import requests
@@ -184,25 +201,32 @@ if __name__ == '__main__':
         base = 'http://cdn.rawgit.com/probonopd/irdb/master/codes'
         with requests.Session() as s:
             download = s.get('{}/{}'.format(base, args.path))
-            content  = download.content.decode('utf-8')
+            content = download.content.decode('utf-8')
             for row in csv.DictReader(content.splitlines(), delimiter=','):
-                code = { 'functionname': row['functionname'],
-                         'raw'         : gen_raw_general(**row) }
+                code = {'functionname': row['functionname'],
+                        'raw': gen_raw_general(**row)}
                 codes.append(code)
 
     elif args.input == 'raw':
-        code         = { 'functionname': 'raw',
-                         'raw'         : args.data }
+        code = {
+            'functionname': 'raw',
+            'raw': args.data
+        }
         codes.append(code)
     elif args.input == 'broadlink_base64':
-        code         = { 'functionname': 'base64', 
-                         'raw'         : gen_raw_from_broadlink_base64(args.data[0].encode()) }
+        code = {
+            'functionname': 'base64',
+            'raw': gen_raw_from_broadlink_base64(args.data[0].encode())
+        }
         codes.append(code)
     else:
-        code         = { 'functionname': '{}({})'.format(args.input, ','.join(map(str,args.data))),
-                         'raw'         : gen_raw_general(args.input, *args.data) }
+        code = {
+            'functionname': '{}({})'.format(args.input, ','.join(map(str,args.data))),
+            'raw': gen_raw_general(args.input, *args.data)
+        }
         codes.append(code)
 
+    # Generate output data
     if args.output == 'broadlink':
         for r in codes:
             v = bytes(gen_broadlink_from_raw(code['raw']))
@@ -214,11 +238,11 @@ if __name__ == '__main__':
             print(v)
 
     elif args.output == 'broadlink_hass':
-        from base64      import b64encode
+        from base64 import b64encode
         from collections import OrderedDict
-        from yaml        import dump, safe_dump
+        from yaml import dump, safe_dump
 
-        group  = dict()
+        group = dict()
         group['entities'] = []
         for code in codes:
             group['entities'].append(gen_hass_entityname(code['functionname']))
@@ -228,13 +252,11 @@ if __name__ == '__main__':
         for code in codes:
             v = bytes(gen_broadlink_from_raw(code['raw']))
             entity = dict()
-            entity['command_on']  = b64encode(v).decode()
+            entity['command_on'] = b64encode(v).decode()
             entity['friendlyname'] = code['functionname']
             switch['switches'][gen_hass_entityname(code['functionname'])] = entity
         print(safe_dump(switch, allow_unicode=True, default_flow_style=False))
         print(safe_dump(group, allow_unicode=True, default_flow_style=False))
-
-
 
     elif args.output == 'raw':
         def signed(x):
@@ -246,4 +268,3 @@ if __name__ == '__main__':
 
         for code in codes:
             print(" ".join(signed(code['raw'])))
-

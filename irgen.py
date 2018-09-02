@@ -114,6 +114,16 @@ def gen_broadlink_from_raw(data):
     l += 4 # rm.send_data() 4 byte header (not seen here)
     yield from bytearray(16 - (l % 16))
 
+def gen_hass_entityname(text):
+    text = text.lower()
+    text = text.replace(" ", "_")
+    text = text.replace(":", "_")
+    text = text.replace("+", "_plus_")
+    text = text.replace("-", "_minus_")
+    text = text.replace("__", "_")
+    text = text.strip("_")
+    return text
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Generate IR code')
@@ -136,7 +146,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    raw = []
+    codes = []
     if args.input in 'irdb':
         import csv
         import requests
@@ -146,42 +156,49 @@ if __name__ == '__main__':
             download = s.get('{}/{}'.format(base, args.path))
             content  = download.content.decode('utf-8')
             for row in csv.DictReader(content.splitlines(), delimiter=','):
-                ir = gen_raw_general(**row)
-                code = (row['functionname'], gen_raw_general(**row))
-                raw.append(code)
+                code = { 'functionname': row['functionname'],
+                         'raw'         : gen_raw_general(**row) }
+                codes.append(code)
 
     elif args.input == 'raw':
-        functionname = '{}({})'.format(args.input, ','.join(map(str,args.data)))
-        code         = (functionname, args.data)
-        raw.append(code)
+        code         = { 'functionname': 'raw',
+                         'raw'         : args.data }
+        codes.append(code)
     else:
-        functionname = '{}({})'.format(args.input, ','.join(map(str,args.data)))
-        data         = gen_raw_general(args.input, *args.data)
-        code         = (functionname, data)
-        raw.append(code)
+        code         = { 'functionname': '{}({})'.format(args.input, ','.join(map(str,args.data))),
+                         'raw'         : gen_raw_general(args.input, *args.data) }
+        codes.append(code)
 
 
     if args.output == 'broadlink':
-        for r in raw:
-            v = bytes(gen_broadlink_from_raw(r[1]))
+        for r in codes:
+            v = bytes(gen_broadlink_from_raw(code['raw']))
             print(v.hex())
 
-    if args.output == 'broadlink_hass':
+    elif args.output == 'broadlink_hass':
         from base64      import b64encode
         from collections import OrderedDict
         from yaml        import dump, safe_dump
 
+        group  = dict()
+        group['entities'] = []
+        for code in codes:
+            group['entities'].append(gen_hass_entityname(code['functionname']))
 
         switch = dict()
         switch['switches'] = dict()
-        for r in raw:
-            v = bytes(gen_broadlink_from_raw(r[1]))
+        for code in codes:
+            v = bytes(gen_broadlink_from_raw(code['raw']))
             entity = dict()
             entity['command_on']  = b64encode(v).decode()
-            switch['switches'][r[0]] = entity
+            entity['friendlyname'] = code['functionname']
+            switch['switches'][gen_hass_entityname(code['functionname'])] = entity
         print(safe_dump(switch, allow_unicode=True, default_flow_style=False))
+        print(safe_dump(group, allow_unicode=True, default_flow_style=False))
+
+
 
     elif args.output == 'raw':
-        for r in raw:
-            print(list(r[1]))
+        for code in codes:
+            print(list(code['raw']))
 

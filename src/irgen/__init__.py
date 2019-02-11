@@ -74,8 +74,12 @@ def gen_raw_general(protocol, device, subdevice, function, **kwargs):
                                int(function))
 
 
-# combine successive same sign value, drop zeros, drop leading negative
 def gen_simplified_from_raw(x):
+    """
+    Simplify raw string.
+
+    Combine successive same sign value, drop zeros, drop leading negative
+    """
     value = 0
     for i in x:
         if i == 0:

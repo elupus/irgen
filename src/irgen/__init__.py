@@ -76,21 +76,21 @@ def gen_raw_general(protocol, device, subdevice, function, **kwargs):
 
 # combine successive same sign value, drop zeros, drop leading negative
 def gen_simplified_from_raw(x):
-    l = 0
+    value = 0
     for i in x:
         if i == 0:
             continue
-        elif l == 0:
+        elif value == 0:
             if i > 0:
-                l = i
+                value = i
             else:
-                pass # leading negative
-        elif (l > 0) == (i > 0):
-            l += i
+                pass  # leading negative
+        elif (value > 0) == (i > 0):
+            value += i
         else:
-            yield l
-            l = i
-    yield l
+            yield value
+            value = i
+    yield value
 
 
 def gen_raw_from_broadlink(data):

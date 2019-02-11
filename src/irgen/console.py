@@ -72,7 +72,7 @@ def main():
         code = {
             'functionname': '{}({})'.format(args.input,
                                             ','.join(map(str, args.data))),
-            'raw': gen_raw_general(args.input, *args.data)
+            'raw': irgen.gen_raw_general(args.input, *args.data)
         }
         codes.append(code)
 

@@ -154,3 +154,7 @@ def gen_broadlink_from_raw(data, repeat=0):
     count += 6  # header+len+trailer
     count += 4  # rm.send_data() 4 byte header (not seen here)
     yield from bytearray(16 - (count % 16))
+
+
+def gen_broadlink_base64_from_raw(data, repeat=0):
+    yield from b64encode(bytes(gen_broadlink_from_raw(data, repeat)))

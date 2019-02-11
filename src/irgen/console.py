@@ -84,8 +84,7 @@ def main():
 
     elif args.output == 'broadlink_base64':
         for r in codes:
-            v = b64encode(bytes(
-                irgen.gen_broadlink_from_raw(code['raw']))).decode()
+            v = bytes(irgen.gen_broadlink_base64_from_raw(code['raw']))
             print(v)
 
     elif args.output == 'broadlink_hass':

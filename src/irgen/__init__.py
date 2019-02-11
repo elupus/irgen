@@ -126,9 +126,9 @@ def gen_raw_from_broadlink_base64(data):
     yield from gen_raw_from_broadlink(b64decode(data))
 
 
-def gen_broadlink_from_raw(data):
+def gen_broadlink_from_raw(data, repeat=0):
     yield from b'\x26'  # IR
-    yield from b'\x00'  # Repeat
+    yield from repeat.to_bytes(1, byteorder='big')  # Repeat
 
     def encode_one(x):
         # v = abs(int(i / 32.84))

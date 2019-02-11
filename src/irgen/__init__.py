@@ -144,13 +144,13 @@ def gen_broadlink_from_raw(data):
             yield from encode_one(i)
 
     c = bytearray(encode_list(data))
-    l = len(c)
-    yield from l.to_bytes(2, byteorder='little')
+    count = len(c)
+    yield from count.to_bytes(2, byteorder='little')
     yield from c
     yield from b'\x0d'
     yield from b'\x05'
 
     # calculate total length for padding
-    l += 6  # header+len+trailer
-    l += 4  # rm.send_data() 4 byte header (not seen here)
-    yield from bytearray(16 - (l % 16))
+    count += 6  # header+len+trailer
+    count += 4  # rm.send_data() 4 byte header (not seen here)
+    yield from bytearray(16 - (count % 16))

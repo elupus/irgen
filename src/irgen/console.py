@@ -21,7 +21,7 @@ def main():
                         choices=[*irgen.gen_raw_nec_protocols,
                                  'raw',
                                  'irdb',
-                                 'broadlink'
+                                 'broadlink',
                                  'broadlink_base64'])
     parser.add_argument('-o', dest='output', type=str,
                         required=True,

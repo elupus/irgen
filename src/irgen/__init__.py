@@ -157,4 +157,4 @@ def gen_broadlink_from_raw(data, repeat=0):
 
 
 def gen_broadlink_base64_from_raw(data, repeat=0):
-    yield from b64encode(bytes(gen_broadlink_from_raw(data, repeat)))
+    return b64encode(bytes(gen_broadlink_from_raw(data, repeat)))

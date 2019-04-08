@@ -16,6 +16,43 @@ gen_raw_nec_protocols_suffixes = ['',
 gen_raw_nec_protocols = list(x + y for x in gen_raw_nec_protocols_standard
                              for y in gen_raw_nec_protocols_suffixes)
 
+gen_raw_rc5_protocols = ['rc5']
+
+gen_raw_protocols = [*gen_raw_nec_protocols, *gen_raw_rc5_protocols]
+
+def uX_to_bin(v, x):
+    if(v < 0):
+        v += (1 << x)
+    return bin(v)[2:].rjust(x, '0')
+
+def gen_raw_rc5(protocol, device, subdevice, function, toggle=0):
+    logical_bit = 889.0
+
+    def encode_bit(s):
+        if s == '1':
+            yield logical_bit * -1
+            yield logical_bit * 1
+        else:
+            yield logical_bit * 1
+            yield logical_bit * -1
+
+    yield from encode_bit('1')  # start
+    if function < 64:
+        yield from encode_bit('1')  # field (function 0-63)
+    else:
+        yield from encode_bit('0')  # field (function 64-127)
+    yield from encode_bit(str(toggle))  # toggle
+
+    # address
+    for s in uX_to_bin(device, 5):
+        yield from encode_bit(s)
+
+    # command
+    for s in uX_to_bin(function % 64, 6):
+        yield from encode_bit(s)
+
+    # trailing silence
+    #yield -114000 + logical_bit*14*2
 
 def gen_raw_nec(protocol, device, subdevice, function):
 
@@ -23,13 +60,8 @@ def gen_raw_nec(protocol, device, subdevice, function):
 
     protocol_base, protocol_suffix = (protocol.split('-') + [None])[:2]
 
-    def u8_to_bin(v):
-        if(v < 0):
-            v += (1 << 8)
-        return bin(v)[2:].rjust(8, '0')
-
     def encode(value):
-        b = u8_to_bin(value)
+        b = uX_to_bin(value, 8)
         for s in reversed(b):
             yield logical_bit  # burst
             if s == '1':
@@ -73,6 +105,12 @@ def gen_raw_general(protocol, device, subdevice, function, **kwargs):
                                int(subdevice),
                                int(function))
 
+    if protocol.lower() in gen_raw_rc5_protocols:
+        yield from gen_raw_rc5(protocol.lower(),
+                               int(device),
+                               int(subdevice),
+                               int(function))
+
 
 def gen_simplified_from_raw(x):
     """
@@ -94,8 +132,24 @@ def gen_simplified_from_raw(x):
         else:
             yield value
             value = i
-    yield value
+    if value != 0:
+        yield value
 
+def gen_paired_from_raw(x):
+    """
+    Create pairs of on, off
+    """
+
+    sign = 1
+    for i in x:
+        if (i < 0) ^ (sign < 0):
+            yield 0.0
+            yield i
+        else:
+            yield i
+            sign = -sign
+    if sign < 0:
+        yield 0.0
 
 def gen_raw_from_broadlink(data):
     v = iter(data)
@@ -158,3 +212,41 @@ def gen_broadlink_from_raw(data, repeat=0):
 
 def gen_broadlink_base64_from_raw(data, repeat=0):
     return b64encode(bytes(gen_broadlink_from_raw(data, repeat)))
+
+
+def gen_pronto_from_raw_int(seq1, seq2, base=None, freq=None):
+    clock = 0.241246 #  Pronto clock base: 1000000 / (32768 * 506 / 4)
+
+    if freq is None:
+        if base is None:
+            freq = 0.040
+        else:
+            freq = 1.0 / (base * clock)
+
+    if base is None:
+        base = int(1 / (freq * clock))
+
+    yield 0
+    yield base
+
+    def fixup(x):
+        return list(gen_paired_from_raw(gen_simplified_from_raw(x)))
+        #return list(gen_paired_from_raw((x)))
+
+    simple1 = fixup(seq1)
+    simple2 = fixup(seq2)
+
+    yield int(len(simple1)/2)  # sequence 1
+    yield int(len(simple2)/2)  # sequence 2
+
+    for x in simple1:
+        yield int(abs(x) * freq)
+
+    for x in simple2:
+        yield int(abs(x) * freq)
+
+
+def gen_pronto_from_raw(seq1, seq2, base=None, freq=None):
+    data = gen_pronto_from_raw_int(seq1, seq2, base, freq)
+    for value in data:
+        yield "{0:0{1}x}".format(value,4)

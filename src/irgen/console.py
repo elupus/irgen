@@ -18,7 +18,7 @@ def main():
     parser.add_argument('-i', dest='input', type=str,
                         required=True,
                         help='Input protocol',
-                        choices=[*irgen.gen_raw_nec_protocols,
+                        choices=[*irgen.gen_raw_protocols,
                                  'raw',
                                  'irdb',
                                  'broadlink',
@@ -29,7 +29,8 @@ def main():
                         choices=['broadlink',
                                  'broadlink_hass',
                                  'broadlink_base64',
-                                 'raw'])
+                                 'raw',
+                                 'pronto'])
 
     parser.add_argument('-d', dest='data',
                         nargs='+',
@@ -59,7 +60,7 @@ def main():
     elif args.input == 'raw':
         code = {
             'functionname': 'raw',
-            'raw': args.data
+            'raw': [float(x) for x in args.data]
         }
         codes.append(code)
     elif args.input == 'broadlink_base64':
@@ -72,7 +73,9 @@ def main():
         code = {
             'functionname': '{}({})'.format(args.input,
                                             ','.join(map(str, args.data))),
-            'raw': irgen.gen_raw_general(args.input, *args.data)
+            'raw': irgen.gen_paired_from_raw(
+                irgen.gen_simplified_from_raw(
+                irgen.gen_raw_general(args.input, *args.data)))
         }
         codes.append(code)
 
@@ -116,6 +119,9 @@ def main():
                     yield "+{}".format(v)
                 else:
                     yield "{}".format(v)
-
         for code in codes:
             print(" ".join(signed(code['raw'])))
+
+    elif args.output == "pronto":
+        for code in codes:
+            print(" ".join(irgen.gen_pronto_from_raw([], code['raw'], base=0x73)))

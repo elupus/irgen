@@ -52,7 +52,7 @@ def gen_raw_rc5(protocol, device, subdevice, function, toggle=0):
         yield from encode_bit(s)
 
     # trailing silence
-    #yield -114000 + logical_bit*14*2
+    yield -114000 + logical_bit*14*2
 
 def gen_raw_nec(protocol, device, subdevice, function):
 

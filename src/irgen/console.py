@@ -116,7 +116,7 @@ def main():
             entity = dict()
             entity['command_on'] = b64encode(v).decode()
             entity['friendlyname'] = code['functionname']
-            switch['switches'][irgen.gen_hass_entityname(
+            switch['switches'][gen_hass_entityname(
                 code['functionname'])] = entity
         print(safe_dump(switch, allow_unicode=True, default_flow_style=False))
         print(safe_dump(group, allow_unicode=True, default_flow_style=False))

@@ -18,7 +18,9 @@ gen_raw_nec_protocols = list(x + y for x in gen_raw_nec_protocols_standard
 
 gen_raw_rc5_protocols = ['rc5']
 
-gen_raw_protocols = [*gen_raw_nec_protocols, *gen_raw_rc5_protocols]
+gen_raw_rc6_protocols = ['rc6']
+
+gen_raw_protocols = [*gen_raw_nec_protocols, *gen_raw_rc5_protocols, *gen_raw_rc6_protocols]
 
 def uX_to_bin(v, x):
     if(v < 0):
@@ -36,6 +38,10 @@ def gen_raw_rc5(protocol, device, subdevice, function, toggle=0):
             yield logical_bit * 1
             yield logical_bit * -1
 
+    def encode_uX(x, l):
+        for s in uX_to_bin(x, l):
+            yield from encode_bit(s)
+
     yield from encode_bit('1')  # start
     if function < 64:
         yield from encode_bit('1')  # field (function 0-63)
@@ -44,15 +50,56 @@ def gen_raw_rc5(protocol, device, subdevice, function, toggle=0):
     yield from encode_bit(str(toggle))  # toggle
 
     # address
-    for s in uX_to_bin(device, 5):
-        yield from encode_bit(s)
+    yield from encode_uX(device, 5)
 
     # command
-    for s in uX_to_bin(function % 64, 6):
-        yield from encode_bit(s)
+    yield from encode_uX(function % 64, 6)
 
     # trailing silence
     yield logical_bit * -100
+
+def gen_raw_rc6(protocol, device, subdevice, function, toggle=0, mode=0):
+    logical_bit = 444.0
+
+    def encode_bit(s):
+        if s == '1':
+            yield logical_bit * 1
+            yield logical_bit * -1
+        else:
+            yield logical_bit * -1
+            yield logical_bit * 1
+
+    def encode_uX(x, l):
+        for s in uX_to_bin(x, l):
+            yield from encode_bit(s)
+
+    #LS
+    yield logical_bit *  6
+    yield logical_bit * -2
+
+    #SB
+    yield from encode_bit('1')
+
+    #Mode
+    yield from encode_uX(mode, 3)
+
+    #TB
+    if toggle:
+        yield logical_bit *  2
+        yield logical_bit * -2
+    else:
+        yield logical_bit * -2
+        yield logical_bit *  2
+
+    #Control
+    yield from encode_uX(device, 8)
+
+    #Information
+    yield from encode_uX(function, 8)
+
+    #Signal Free
+    yield logical_bit * -6
+
 
 def gen_raw_nec(protocol, device, subdevice, function):
 
@@ -107,6 +154,12 @@ def gen_raw_general(protocol, device, subdevice, function, **kwargs):
 
     if protocol.lower() in gen_raw_rc5_protocols:
         yield from gen_raw_rc5(protocol.lower(),
+                               int(device),
+                               int(subdevice),
+                               int(function))
+
+    if protocol.lower() in gen_raw_rc6_protocols:
+        yield from gen_raw_rc6(protocol.lower(),
                                int(device),
                                int(subdevice),
                                int(function))

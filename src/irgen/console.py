@@ -97,7 +97,7 @@ def main():
     elif args.output == 'broadlink_base64':
         for r in codes:
             v = bytes(irgen.gen_broadlink_base64_from_raw(code['raw']))
-            print(v)
+            print(v.decode('ascii'))
 
     elif args.output == 'broadlink_hass':
         from base64 import b64encode

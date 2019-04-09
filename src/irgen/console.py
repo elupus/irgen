@@ -31,6 +31,10 @@ def main():
                                  'broadlink_base64',
                                  'raw',
                                  'pronto'])
+    parser.add_argument('-r', dest='repeats',
+                              help='Number of repeats',
+                              default=1,
+                              type=int)
 
     parser.add_argument('-d', dest='data',
                         nargs='+',
@@ -78,6 +82,11 @@ def main():
                 irgen.gen_raw_general(args.input, *args.data)))
         }
         codes.append(code)
+
+    # Process raw data
+    if args.repeats > 1:
+        for code in codes:
+            code['raw'] = list(code['raw'])*(args.repeats)
 
     # Generate output data
     if args.output == 'broadlink':

@@ -8,7 +8,7 @@ with open(path.join(this_directory, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='irgen',
-    version='0.1.0',
+    version='0.1.1',
     description='A python tool for generating and converting ir formats',
     long_description=long_description,
     long_description_content_type='text/x-rst',
@@ -17,9 +17,17 @@ setup(
     package_dir = {'': 'src'},
     python_requires='>3.5',
     author='Joakim Plate',
-    install_requires=[],
+    install_requires=[
+        'asyncio',
+        'requests'
+    ],
     extras_require={
-        'tests': []
+        'tests': [
+            'pytest>3.6.4',
+            'pytest-asyncio',
+            'pytest-cov<2.6',
+            'coveralls'
+        ]
     },
     entry_points = {
         'console_scripts' : ['irgen=irgen.console:main']

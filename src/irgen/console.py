@@ -22,7 +22,8 @@ def main():
                                  'raw',
                                  'irdb',
                                  'broadlink',
-                                 'broadlink_base64'])
+                                 'broadlink_base64',
+                                 'pronto'])
     parser.add_argument('-o', dest='output', type=str,
                         required=True,
                         help='Output protocol',
@@ -71,6 +72,12 @@ def main():
         code = {
             'functionname': 'base64',
             'raw': irgen.gen_raw_from_broadlink_base64(args.data[0].encode())
+        }
+        codes.append(code)
+    elif args.input == 'pronto':
+        code = {
+            'functionname': 'pronto',
+            'raw': irgen.gen_raw_from_pronto(int(x, base=16) for x in args.data)
         }
         codes.append(code)
     else:

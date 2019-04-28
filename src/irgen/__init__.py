@@ -267,6 +267,27 @@ def gen_broadlink_base64_from_raw(data, repeat=0):
     return b64encode(bytes(gen_broadlink_from_raw(data, repeat)))
 
 
+def gen_raw_from_pronto(data):
+    clock = 0.241246 #  Pronto clock base: 1000000 / (32768 * 506 / 4)
+
+    v = iter(data)
+    zero = next(v)
+    assert zero == 0
+    base = next(v)
+    freq = 1.0 / (base * clock)
+
+    seq1_len = next(v)
+    seq2_len = next(v)
+
+    for _ in range(seq1_len):
+        yield +round(next(v) / freq, 1)
+        yield -round(next(v) / freq, 1)
+
+    for _ in range(seq2_len):
+        yield +round(next(v) / freq, 1)
+        yield -round(next(v) / freq, 1)
+
+
 def gen_pronto_from_raw_int(seq1, seq2, base=None, freq=None):
     clock = 0.241246 #  Pronto clock base: 1000000 / (32768 * 506 / 4)
 

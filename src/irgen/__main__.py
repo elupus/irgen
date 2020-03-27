@@ -141,3 +141,6 @@ def main():
     elif args.output == "pronto":
         for code in codes:
             print(" ".join(irgen.gen_pronto_from_raw([], code['raw'], base=0x73)))
+
+if __name__ == "__main__":
+    main()

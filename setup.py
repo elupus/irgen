@@ -30,7 +30,7 @@ setup(
         ]
     },
     entry_points = {
-        'console_scripts' : ['irgen=irgen.console:main']
+        'console_scripts' : ['irgen=irgen.__main__:main']
     },
     url='https://github.com/elupus/irgen',
     classifiers=[

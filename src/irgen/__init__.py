@@ -238,7 +238,7 @@ def gen_raw_from_broadlink(data):
     assert next(v) == 0x05
 
     rem = list(v)
-    if rem:
+    if any(rem):
         LOG.warning("Ignored extra data: %s", rem)
 
 

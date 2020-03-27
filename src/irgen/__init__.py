@@ -252,7 +252,7 @@ def gen_broadlink_from_raw(data, repeat=0):
 
     def encode_one(x):
         # v = abs(int(i / 32.84))
-        v = abs(int(x * 269 / 8192))
+        v = abs(round(x * 269 / 8192))
         if v > 255:
             yield from b'\x00'
             yield from v.to_bytes(2, byteorder='big')

@@ -2,6 +2,9 @@
 from base64 import b64encode, b64decode
 import binascii
 from itertools import islice
+import logging
+
+LOG = logging.getLogger(__name__)
 
 gen_raw_nec_protocols_standard = ['nec1',
                                   'nec2',
@@ -219,7 +222,10 @@ def gen_raw_from_broadlink(data):
     def decode_iter(x):
         sign = 1
         while True:
-            d = next(x)
+            try:
+                d = next(x)
+            except StopIteration:
+                return
             if d == 0:
                 d = int.from_bytes(islice(x, 2), byteorder='big')
 
@@ -227,6 +233,13 @@ def gen_raw_from_broadlink(data):
             sign = sign * -1
 
     yield from decode_iter(islice(v, length))
+
+    assert next(v) == 0x0d
+    assert next(v) == 0x05
+
+    rem = list(v)
+    if rem:
+        LOG.warning("Ignored extra data: %s", rem)
 
 
 def gen_raw_from_broadlink_base64(data):

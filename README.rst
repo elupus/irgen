@@ -43,6 +43,13 @@ Philips RC-6 Protocol
 
     irgen -i rc6 -d 16 -1 0 -o raw
 
+RCA RCA-38 Protocol
+---------------------
+
+.. code-block:: bash
+
+     irgen -i rca38 -d 15 -1 0 -o raw
+
 
 Raw
 ---

@@ -23,7 +23,9 @@ gen_raw_rc5_protocols = ['rc5']
 
 gen_raw_rc6_protocols = ['rc6']
 
-gen_raw_protocols = [*gen_raw_nec_protocols, *gen_raw_rc5_protocols, *gen_raw_rc6_protocols]
+gen_raw_rca38_protocols = ['rca38']
+
+gen_raw_protocols = [*gen_raw_nec_protocols, *gen_raw_rc5_protocols, *gen_raw_rc6_protocols, *gen_raw_rca38_protocols]
 
 def uX_to_bin(v, x):
     if(v < 0):
@@ -148,6 +150,40 @@ def gen_raw_nec(protocol, device, subdevice, function):
     yield logical_bit * -3  # Trailing zero to separate
 
 
+def gen_raw_rca38(protocol, device, subdevice, function, **kwargs):
+    logical_bit = 460
+    def encode_bit(s):
+        if s == '1':
+            yield logical_bit * 1
+            yield logical_bit * -4
+        else:
+            yield logical_bit * 1
+            yield logical_bit * -2
+
+    def rev_encode_bit(s):
+        if s == '1':
+            yield from encode_bit('0')
+        else:
+            yield from encode_bit('1')
+
+    def encode_uX(x, l, f):
+        for s in uX_to_bin(x, l):
+            yield from f(s)
+
+
+    #Starting burst
+    yield logical_bit *  8
+    yield logical_bit * -8
+    # Device and function
+    yield from encode_uX(device, 4, encode_bit)
+    yield from encode_uX(function, 8, encode_bit)
+    #Reversed device and function
+    yield from encode_uX(device, 4, rev_encode_bit)
+    yield from encode_uX(function, 8, rev_encode_bit)
+    #Ending burst
+    yield logical_bit * 1
+    yield logical_bit * -16
+
 def gen_raw_general(protocol, device, subdevice, function, **kwargs):
     if protocol.lower() in gen_raw_nec_protocols:
         yield from gen_raw_nec(protocol.lower(),
@@ -163,6 +199,12 @@ def gen_raw_general(protocol, device, subdevice, function, **kwargs):
 
     if protocol.lower() in gen_raw_rc6_protocols:
         yield from gen_raw_rc6(protocol.lower(),
+                               int(device),
+                               int(subdevice),
+                               int(function))
+
+    if protocol.lower() in gen_raw_rca38_protocols:
+        yield from gen_raw_rca38(protocol.lower(),
                                int(device),
                                int(subdevice),
                                int(function))

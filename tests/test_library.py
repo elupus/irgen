@@ -15,3 +15,10 @@ def test_broadlink_decode_encode():
     raw  = list(irgen.gen_raw_from_broadlink_base64(data))
     data2 = bytes(irgen.gen_broadlink_base64_from_raw(raw))
     assert data == data2
+
+def test_rca38_decode_encode():
+    """
+    data was generated with IrScrutinizer-2.2.6 device 12, OBC 123
+    """
+    data = [+3680,-3680,+460,-1840,+460,-1840,+460,-920,+460,-920,+460,-920,+460,-1840,+460,-1840,+460,-1840,+460,-1840,+460,-920,+460,-1840,+460,-1840,+460,-920,+460,-920,+460,-1840,+460,-1840,+460,-1840,+460,-920,+460,-920,+460,-920,+460,-920,+460,-1840,+460,-920,+460,-920,+460,-7360]
+    assert data == list(irgen.gen_raw_general('rca38', 12, -1, 123))

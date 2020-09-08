@@ -1,5 +1,5 @@
 """IR generator tool."""
-from base64 import b64encode, b64decode
+from base64 import b64encode, b64decode, decode
 from itertools import islice
 import logging
 
@@ -39,6 +39,10 @@ def uX_to_bin(v, x):
     return bin(v)[2:].rjust(x, '0')
 
 
+def bin_to_uX(v):
+    return int("".join(v), 2)
+ 
+
 def gen_raw_rc5(protocol, device, subdevice, function, toggle=0):
     """Generate a raw list from rc5 parameters."""
     logical_bit = 889.0
@@ -70,6 +74,45 @@ def gen_raw_rc5(protocol, device, subdevice, function, toggle=0):
 
     # trailing silence
     yield logical_bit * -100
+
+
+def dec_raw_rc5(data):
+    logical_bit = 889.0
+    v = iter(data)
+
+    def decode_value(x):
+        res = x / logical_bit
+        if 0.9 < res < 1.1:
+            return 1
+        elif -1.1 < res < -0.9:
+            return -1
+        else:
+            raise Exception(f"Value out of range: {x}")
+
+    def decode_bit(x):
+        x1 = decode_value(next(x))
+        x2 = decode_value(next(x))
+        if x1 < 0 and x2 > 0:
+            return '1'
+        elif x1 > 0 and x2 < 0:
+            return '0'
+        else:
+            raise Exception(f"Unexpected pair {x1} and {x2}")
+
+    def decode_uX(x, l):
+        return bin_to_uX([decode_bit(x) for _ in range(l)])
+
+
+    assert decode_bit(v) == '1'
+    function = decode_bit(v)
+    toggle = decode_bit(v)
+    address = decode_uX(v, 5)
+    command = decode_uX(v, 6)
+
+    if function == '0':
+        command += 64
+    
+    return (address, -1, command)
 
 
 def gen_raw_rc6(protocol, device, subdevice, function, toggle=0, mode=0):

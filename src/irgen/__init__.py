@@ -43,6 +43,18 @@ def bin_to_uX(v):
     return int("".join(v), 2)
  
 
+def gen_bitified_from_raw(data, logical_bit):
+    """Splits durations into bitified chunks"""
+    for duration in data:
+        bits = abs(int(duration / logical_bit))
+        sign = 1 if duration > 0 else -1
+        error = duration % logical_bit
+        if abs(error / logical_bit) > 0.1:
+            raise Exception(f"Value {duration} can't be cleanly decoded into bits of length {logical_bit}")
+        for _ in range(bits):
+            yield sign
+
+
 def gen_raw_rc5(device, function, toggle):
     """Generate a raw list from rc5 parameters."""
     logical_bit = 889.0
@@ -78,20 +90,11 @@ def gen_raw_rc5(device, function, toggle):
 
 def dec_raw_rc5(data):
     logical_bit = 889.0
-    v = iter(data)
-
-    def decode_value(x):
-        res = x / logical_bit
-        if 0.9 < res < 1.1:
-            return 1
-        elif -1.1 < res < -0.9:
-            return -1
-        else:
-            raise Exception(f"Value out of range: {x}")
+    v = gen_bitified_from_raw(data, logical_bit)
 
     def decode_bit(x):
-        x1 = decode_value(next(x))
-        x2 = decode_value(next(x))
+        x1 = next(x)
+        x2 = next(x)
         if x1 < 0 and x2 > 0:
             return '1'
         elif x1 > 0 and x2 < 0:
@@ -112,7 +115,7 @@ def dec_raw_rc5(data):
     if function == '0':
         command += 64
 
-    return (address, -1, command, toggle)
+    return (address, command, int(toggle))
 
 
 def gen_raw_rc6(device, function, toggle=0, mode=0):

@@ -170,6 +170,56 @@ def gen_raw_rc6(device, function, toggle=0, mode=0):
     yield logical_bit * -6
 
 
+def dec_raw_rc6(data):
+
+    def decode_bit(x):
+        x1 = next(x)
+        x2 = next(x)
+        if x1 < 0 and x2 > 0:
+            return '0'
+        elif x1 > 0 and x2 < 0:
+            return '1'
+        else:
+            raise Exception(f"Unexpected pair {x1} and {x2}")
+
+    def decode_uX(x, l):
+        return bin_to_uX([decode_bit(x) for _ in range(l)])
+
+    v = gen_bitified_from_raw(data, 444.0)
+
+    # LS
+    while next(v) == -1:
+        pass
+    for _ in range(5):
+        assert next(v) == 1
+    for _ in range(2):
+        assert next(v) == -1
+
+    sb = decode_bit(v)
+    assert sb == '1'
+
+    mode = decode_uX(v, 3)
+    toggle_raw = [next(v) for _ in range(4)]
+    if toggle_raw == [1, 1, -1, -1]:
+        toggle = 1
+    elif toggle_raw == [-1, -1, 1, 1]:
+        toggle = 0
+    else:
+        raise Exception(f"Unexpected toggle {toggle_raw}")
+
+    device = decode_uX(v, 8)
+    function = decode_uX(v, 8)
+
+    # verify trailing silence
+    try:
+        for _ in range(6):
+            assert next(v) == -1
+    except StopIteration:
+        pass
+
+    return (device, function, toggle, mode)
+
+
 def gen_raw_nec(protocol, device, subdevice, function):
     """Generate a raw list from nec parameters."""
     logical_bit = 562.5
@@ -454,5 +504,6 @@ def gen_pronto_from_raw(seq1, seq2, base=None, freq=None):
 
 
 dec_raw_protocols = {
-    'rc5': dec_raw_rc5
+    'rc5': dec_raw_rc5,
+    'rc6': dec_raw_rc6,
 }

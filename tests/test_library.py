@@ -25,6 +25,18 @@ def test_rca38_decode_encode():
     data = [+3680,-3680,+460,-1840,+460,-1840,+460,-920,+460,-920,+460,-920,+460,-1840,+460,-1840,+460,-1840,+460,-1840,+460,-920,+460,-1840,+460,-1840,+460,-920,+460,-920,+460,-1840,+460,-1840,+460,-1840,+460,-920,+460,-920,+460,-920,+460,-920,+460,-1840,+460,-920,+460,-920,+460,-7360]
     assert data == list(irgen.gen_raw_general('rca38', 12, -1, 123))
 
+
+def test_gen_bitified_from_raw():
+    assert list(irgen.gen_bitified_from_raw([100, 200], 100)) == [1, 1, 1]
+    assert list(irgen.gen_bitified_from_raw([100, -200], 100)) == [1, -1, -1]
+
+    with pytest.raises(Exception):
+        list(irgen.gen_bitified_from_raw([100, -200*0.85], 100))
+
+    with pytest.raises(Exception):
+        list(irgen.gen_bitified_from_raw([100, -200*1.15], 100))
+
+
 @pytest.mark.parametrize("device, function, toggle", [
     (2, 4, 0),
     (5, 66, 0)

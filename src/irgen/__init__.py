@@ -115,6 +115,12 @@ def dec_raw_rc5(data):
     if function == '0':
         command += 64
 
+    try:
+        for _ in range(100):
+            assert next(v) == -1
+    except StopIteration:
+        pass
+
     return (address, command, int(toggle))
 
 

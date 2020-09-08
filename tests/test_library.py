@@ -26,8 +26,8 @@ def test_rca38_decode_encode():
     assert data == list(irgen.gen_raw_general('rca38', 12, -1, 123))
 
 @pytest.mark.parametrize("device, function, toggle", [
-    (2, 4),
-    (5, 66)
+    (2, 4, 0),
+    (5, 66, 0)
 ])
 def test_rc5_round_about(device, function, toggle):
     data = irgen.gen_raw_rc5(device, function, toggle)

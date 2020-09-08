@@ -1,4 +1,3 @@
-from sqlalchemy.sql.expression import func
 import irgen
 import pytest
 

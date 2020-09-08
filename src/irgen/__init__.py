@@ -324,7 +324,7 @@ def gen_raw_from_broadlink(data):
 
     length = int.from_bytes(islice(v, 2), byteorder='little')
     assert length >= 2  # a At least trailer
-
+ 
     def decode_one(x):
         return round(x * 8192 / 269)
 
@@ -451,3 +451,8 @@ def gen_pronto_from_raw(seq1, seq2, base=None, freq=None):
     data = gen_pronto_from_raw_int(seq1, seq2, base, freq)
     for value in data:
         yield "{0:0{1}x}".format(value, 4)
+
+
+dec_raw_protocols = {
+    'rc5': dec_raw_rc5
+}

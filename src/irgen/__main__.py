@@ -27,7 +27,8 @@ def main():
     parser.add_argument('-o', dest='output', type=str,
                         required=True,
                         help='Output protocol',
-                        choices=['broadlink',
+                        choices=[*irgen.dec_raw_protocols.keys(),
+                                 'broadlink',
                                  'broadlink_hass',
                                  'broadlink_base64',
                                  'raw',
@@ -141,6 +142,11 @@ def main():
     elif args.output == "pronto":
         for code in codes:
             print(" ".join(irgen.gen_pronto_from_raw([], code['raw'], base=0x73)))
+
+    elif args.output in irgen.dec_raw_protocols:
+        parser = irgen.dec_raw_protocols[args.output]
+        for code in codes:
+            print(parser(list(code['raw'])))
 
 if __name__ == "__main__":
     main()

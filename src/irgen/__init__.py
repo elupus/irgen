@@ -89,8 +89,7 @@ def gen_raw_rc5(device, function, toggle):
 
 
 def dec_raw_rc5(data):
-    logical_bit = 889.0
-    v = gen_bitified_from_raw(data, logical_bit)
+    v = gen_bitified_from_raw(data, 889.0)
 
     def decode_bit(x):
         x1 = next(x)
@@ -105,8 +104,10 @@ def dec_raw_rc5(data):
     def decode_uX(x, l):
         return bin_to_uX([decode_bit(x) for _ in range(l)])
 
+    # look for start bit
+    while next(v) == -1:
+        pass
 
-    assert decode_bit(v) == '1'
     function = decode_bit(v)
     toggle = decode_bit(v)
     address = decode_uX(v, 5)
@@ -115,6 +116,7 @@ def dec_raw_rc5(data):
     if function == '0':
         command += 64
 
+    # verify trailing silence
     try:
         for _ in range(100):
             assert next(v) == -1

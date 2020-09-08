@@ -43,7 +43,7 @@ def bin_to_uX(v):
     return int("".join(v), 2)
  
 
-def gen_raw_rc5(protocol, device, subdevice, function, toggle=0):
+def gen_raw_rc5(device, function, toggle):
     """Generate a raw list from rc5 parameters."""
     logical_bit = 889.0
 
@@ -111,11 +111,11 @@ def dec_raw_rc5(data):
 
     if function == '0':
         command += 64
-    
-    return (address, -1, command)
+
+    return (address, -1, command, toggle)
 
 
-def gen_raw_rc6(protocol, device, subdevice, function, toggle=0, mode=0):
+def gen_raw_rc6(device, function, toggle=0, mode=0):
     """Generate a raw list from rc6 parameters."""
     logical_bit = 444.0
 
@@ -203,7 +203,7 @@ def gen_raw_nec(protocol, device, subdevice, function):
     yield logical_bit * -3  # Trailing zero to separate
 
 
-def gen_raw_rca38(protocol, device, subdevice, function, **kwargs):
+def gen_raw_rca38(device, function):
     """Generate a raw list from rca38 parameters."""
     logical_bit = 460
 
@@ -250,22 +250,19 @@ def gen_raw_general(protocol, device, subdevice, function, **kwargs):
                                int(function))
 
     if protocol.lower() in gen_raw_rc5_protocols:
-        yield from gen_raw_rc5(protocol.lower(),
-                               int(device),
-                               int(subdevice),
-                               int(function))
+        yield from gen_raw_rc5(device=int(device),
+                               function=int(function),
+                               toggle=kwargs.get("toggle", 0))
 
     if protocol.lower() in gen_raw_rc6_protocols:
-        yield from gen_raw_rc6(protocol.lower(),
-                               int(device),
-                               int(subdevice),
-                               int(function))
+        yield from gen_raw_rc6(device=int(device),
+                               function=int(function),
+                               toggle=kwargs.get("toggle", 0),
+                               mode=kwargs.get("mode", 0))
 
     if protocol.lower() in gen_raw_rca38_protocols:
-        yield from gen_raw_rca38(protocol.lower(),
-                                 int(device),
-                                 int(subdevice),
-                                 int(function))
+        yield from gen_raw_rca38(device=int(device),
+                                 function=int(function))
 
 
 def gen_simplified_from_raw(x):

@@ -25,10 +25,10 @@ def test_rca38_decode_encode():
     data = [+3680,-3680,+460,-1840,+460,-1840,+460,-920,+460,-920,+460,-920,+460,-1840,+460,-1840,+460,-1840,+460,-1840,+460,-920,+460,-1840,+460,-1840,+460,-920,+460,-920,+460,-1840,+460,-1840,+460,-1840,+460,-920,+460,-920,+460,-920,+460,-920,+460,-1840,+460,-920,+460,-920,+460,-7360]
     assert data == list(irgen.gen_raw_general('rca38', 12, -1, 123))
 
-@pytest.mark.parametrize("device, function", [
+@pytest.mark.parametrize("device, function, toggle", [
     (2, 4),
     (5, 66)
 ])
-def test_rc5_round_about(device, function):
-    data = irgen.gen_raw_rc5("rc5", device, -1, function)
-    assert irgen.dec_raw_rc5(data) == (device, -1, function)
+def test_rc5_round_about(device, function, toggle):
+    data = irgen.gen_raw_rc5(device, function, toggle)
+    assert irgen.dec_raw_rc5(data) == (device, function, toggle)

@@ -1,6 +1,5 @@
-
+"""IR generator tool."""
 from base64 import b64encode, b64decode
-import binascii
 from itertools import islice
 import logging
 
@@ -25,14 +24,23 @@ gen_raw_rc6_protocols = ['rc6']
 
 gen_raw_rca38_protocols = ['rca38']
 
-gen_raw_protocols = [*gen_raw_nec_protocols, *gen_raw_rc5_protocols, *gen_raw_rc6_protocols, *gen_raw_rca38_protocols]
+gen_raw_protocols = [
+    *gen_raw_nec_protocols,
+    *gen_raw_rc5_protocols,
+    *gen_raw_rc6_protocols,
+    *gen_raw_rca38_protocols
+]
+
 
 def uX_to_bin(v, x):
+    """Create a binary set of valued."""
     if(v < 0):
         v += (1 << x)
     return bin(v)[2:].rjust(x, '0')
 
+
 def gen_raw_rc5(protocol, device, subdevice, function, toggle=0):
+    """Generate a raw list from rc5 parameters."""
     logical_bit = 889.0
 
     def encode_bit(s):
@@ -63,7 +71,9 @@ def gen_raw_rc5(protocol, device, subdevice, function, toggle=0):
     # trailing silence
     yield logical_bit * -100
 
+
 def gen_raw_rc6(protocol, device, subdevice, function, toggle=0, mode=0):
+    """Generate a raw list from rc6 parameters."""
     logical_bit = 444.0
 
     def encode_bit(s):
@@ -78,36 +88,36 @@ def gen_raw_rc6(protocol, device, subdevice, function, toggle=0, mode=0):
         for s in uX_to_bin(x, l):
             yield from encode_bit(s)
 
-    #LS
-    yield logical_bit *  6
+    # LS
+    yield logical_bit * 6
     yield logical_bit * -2
 
-    #SB
+    # SB
     yield from encode_bit('1')
 
-    #Mode
+    # Mode
     yield from encode_uX(mode, 3)
 
-    #TB
+    # TB
     if toggle:
-        yield logical_bit *  2
+        yield logical_bit * 2
         yield logical_bit * -2
     else:
         yield logical_bit * -2
-        yield logical_bit *  2
+        yield logical_bit * 2
 
-    #Control
+    # Control
     yield from encode_uX(device, 8)
 
-    #Information
+    # Information
     yield from encode_uX(function, 8)
 
-    #Signal Free
+    # Signal Free
     yield logical_bit * -6
 
 
 def gen_raw_nec(protocol, device, subdevice, function):
-
+    """Generate a raw list from nec parameters."""
     logical_bit = 562.5
 
     protocol_base, protocol_suffix = (protocol.split('-') + [None])[:2]
@@ -151,7 +161,9 @@ def gen_raw_nec(protocol, device, subdevice, function):
 
 
 def gen_raw_rca38(protocol, device, subdevice, function, **kwargs):
+    """Generate a raw list from rca38 parameters."""
     logical_bit = 460
+
     def encode_bit(s):
         if s == '1':
             yield logical_bit * 1
@@ -170,19 +182,22 @@ def gen_raw_rca38(protocol, device, subdevice, function, **kwargs):
         for s in uX_to_bin(x, l):
             yield from f(s)
 
-
-    #Starting burst
-    yield logical_bit *  8
+    # Starting burst
+    yield logical_bit * 8
     yield logical_bit * -8
+
     # Device and function
     yield from encode_uX(device, 4, encode_bit)
     yield from encode_uX(function, 8, encode_bit)
-    #Reversed device and function
+
+    # Reversed device and function
     yield from encode_uX(device, 4, rev_encode_bit)
     yield from encode_uX(function, 8, rev_encode_bit)
-    #Ending burst
+
+    # Ending burst
     yield logical_bit * 1
     yield logical_bit * -16
+
 
 def gen_raw_general(protocol, device, subdevice, function, **kwargs):
     if protocol.lower() in gen_raw_nec_protocols:
@@ -205,9 +220,9 @@ def gen_raw_general(protocol, device, subdevice, function, **kwargs):
 
     if protocol.lower() in gen_raw_rca38_protocols:
         yield from gen_raw_rca38(protocol.lower(),
-                               int(device),
-                               int(subdevice),
-                               int(function))
+                                 int(device),
+                                 int(subdevice),
+                                 int(function))
 
 
 def gen_simplified_from_raw(x):
@@ -233,11 +248,9 @@ def gen_simplified_from_raw(x):
     if value != 0:
         yield value
 
-def gen_paired_from_raw(x):
-    """
-    Create pairs of on, off
-    """
 
+def gen_paired_from_raw(x):
+    """Create pairs of on, off."""
     sign = 1
     for i in x:
         if (i < 0) ^ (sign < 0):
@@ -249,10 +262,12 @@ def gen_paired_from_raw(x):
     if sign < 0:
         yield 0.0
 
+
 def gen_raw_from_broadlink(data):
+    """Genearate raw values from broadling data."""
     v = iter(data)
     code = next(v)
-    repeat = next(v)
+    next(v)  # repeat
 
     assert code == 0x26  # IR
 
@@ -285,10 +300,12 @@ def gen_raw_from_broadlink(data):
 
 
 def gen_raw_from_broadlink_base64(data):
+    """Generate raw data from a base 64 encoded broadlink data."""
     yield from gen_raw_from_broadlink(b64decode(data))
 
 
 def gen_broadlink_from_raw(data, repeat=0):
+    """Generate broadlink datat from a raw values."""
     yield from b'\x26'  # IR
     yield from repeat.to_bytes(1, byteorder='big')  # Repeat
 
@@ -319,11 +336,13 @@ def gen_broadlink_from_raw(data, repeat=0):
 
 
 def gen_broadlink_base64_from_raw(data, repeat=0):
+    """Generate broadlink base64 encoded from raw data."""
     return b64encode(bytes(gen_broadlink_from_raw(data, repeat)))
 
 
 def gen_raw_from_pronto(data):
-    clock = 0.241246 #  Pronto clock base: 1000000 / (32768 * 506 / 4)
+    """Generate raw values from a pronto pair list."""
+    clock = 0.241246  # Pronto clock base: 1000000 / (32768 * 506 / 4)
 
     v = iter(data)
     zero = next(v)
@@ -344,7 +363,8 @@ def gen_raw_from_pronto(data):
 
 
 def gen_pronto_from_raw_int(seq1, seq2, base=None, freq=None):
-    clock = 0.241246 #  Pronto clock base: 1000000 / (32768 * 506 / 4)
+    """Generate pronto pair ints from raw."""
+    clock = 0.241246  # Pronto clock base: 1000000 / (32768 * 506 / 4)
 
     if freq is None:
         if base is None:
@@ -360,7 +380,6 @@ def gen_pronto_from_raw_int(seq1, seq2, base=None, freq=None):
 
     def fixup(x):
         return list(gen_paired_from_raw(gen_simplified_from_raw(x)))
-        #return list(gen_paired_from_raw((x)))
 
     simple1 = fixup(seq1)
     simple2 = fixup(seq2)
@@ -376,6 +395,7 @@ def gen_pronto_from_raw_int(seq1, seq2, base=None, freq=None):
 
 
 def gen_pronto_from_raw(seq1, seq2, base=None, freq=None):
+    """Generate pronto pair list from raw."""
     data = gen_pronto_from_raw_int(seq1, seq2, base, freq)
     for value in data:
-        yield "{0:0{1}x}".format(value,4)
+        yield "{0:0{1}x}".format(value, 4)

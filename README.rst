@@ -64,7 +64,7 @@ Broadlink
 
 .. code-block:: bash
 
-    irgen -i broadlink_base64 -d JgAaAB0dOjo6HR0dHR0dHR0dHR0dHR0dHTodAAtnDQUAAAAAAAAAAAAAAAA= -o pronto
+    irgen -i broadlink_base64 -d JgAcAB0dOjo6HR0dHR0dHR0dHR0dHR0dHTodAAtnDQUAAAAAAAAAAAAAAAA= -o pronto
 
 
 Output Formats

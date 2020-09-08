@@ -13,7 +13,7 @@ def test_gen_paired_from_raw():
         [0.0, -1.0, -1.0, 1.0])) == [0.0, -1.0, 0.0, -1.0, 1.0, 0.0]
 
 def test_broadlink_decode_encode():
-    data = b"JgAaAB0dOjo6HR0dHR0dHR0dHR0dHR0dHTodAAtnDQUAAAAAAAAAAAAAAAA="
+    data = b"JgAcAB0dOjo6HR0dHR0dHR0dHR0dHR0dHTodAAtnDQUAAAAAAAAAAAAAAAA="
     raw  = list(irgen.gen_raw_from_broadlink_base64(data))
     data2 = bytes(irgen.gen_broadlink_base64_from_raw(raw))
     assert data == data2

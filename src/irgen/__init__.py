@@ -323,6 +323,7 @@ def gen_raw_from_broadlink(data):
     assert code == 0x26  # IR
 
     length = int.from_bytes(islice(v, 2), byteorder='little')
+    assert length >= 2  # a At least trailer
 
     def decode_one(x):
         return round(x * 8192 / 269)
@@ -340,7 +341,7 @@ def gen_raw_from_broadlink(data):
             yield sign * decode_one(d)
             sign = sign * -1
 
-    yield from decode_iter(islice(v, length))
+    yield from decode_iter(islice(v, length - 2))
 
     assert next(v) == 0x0d
     assert next(v) == 0x05
@@ -374,14 +375,14 @@ def gen_broadlink_from_raw(data, repeat=0):
             yield from encode_one(i)
 
     c = bytearray(encode_list(data))
-    count = len(c)
+    count = len(c) + 2
     yield from count.to_bytes(2, byteorder='little')
     yield from c
     yield from b'\x0d'
     yield from b'\x05'
 
     # calculate total length for padding
-    count += 6  # header+len+trailer
+    count += 4  # header+len+trailer
     count += 4  # rm.send_data() 4 byte header (not seen here)
     yield from bytearray(16 - (count % 16))
 

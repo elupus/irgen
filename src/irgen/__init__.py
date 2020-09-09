@@ -55,6 +55,7 @@ def gen_bitified_from_raw(data, logical_bit):
         for _ in range(bits):
             yield sign
 
+
 def gen_raw_from_bitified(data, logical_bit):
     """Rescales output to logical bit length."""
     for bit in data:
@@ -70,6 +71,7 @@ def gen_raw_from_bitified_decorator(logical_bits):
         return inner_1
     return inner_2
 
+
 @gen_raw_from_bitified_decorator(889.0)
 def gen_raw_rc5(device, function, toggle):
     """Generate a raw list from rc5 parameters."""
@@ -81,22 +83,22 @@ def gen_raw_rc5(device, function, toggle):
             yield 1
             yield -1
 
-    def encode_uX(x, l):
+    def encode(x, l):
         for s in uX_to_bin(x, l):
             yield from encode_bit(s)
 
-    yield from encode_bit('1')  # start
+    yield from encode(1, 1)  # start
     if function < 64:
-        yield from encode_bit('1')  # field (function 0-63)
+        yield from encode(1, 1)  # field (function 0-63)
     else:
-        yield from encode_bit('0')  # field (function 64-127)
-    yield from encode_bit(str(toggle))  # toggle
+        yield from encode(0, 1)  # field (function 64-127)
+    yield from encode(toggle, 1)  # toggle
 
     # address
-    yield from encode_uX(device, 5)
+    yield from encode(device, 5)
 
     # command
-    yield from encode_uX(function % 64, 6)
+    yield from encode(function % 64, 6)
 
     # trailing silence
     yield -100
@@ -115,7 +117,7 @@ def dec_raw_rc5(data):
         else:
             raise Exception(f"Unexpected pair {x1} and {x2}")
 
-    def decode_uX(x, l):
+    def decode(x, l):
         return bin_to_uX([decode_bit(x) for _ in range(l)])
 
     # look for start bit
@@ -124,8 +126,8 @@ def dec_raw_rc5(data):
 
     function = decode_bit(v)
     toggle = decode_bit(v)
-    address = decode_uX(v, 5)
-    command = decode_uX(v, 6)
+    address = decode(v, 5)
+    command = decode(v, 6)
 
     if function == '0':
         command += 64
@@ -139,6 +141,7 @@ def dec_raw_rc5(data):
 
     return (address, command, int(toggle))
 
+
 @gen_raw_from_bitified_decorator(444.0)
 def gen_raw_rc6(device, function, toggle=0, mode=0):
     """Generate a raw list from rc6 parameters."""
@@ -151,7 +154,7 @@ def gen_raw_rc6(device, function, toggle=0, mode=0):
             yield -1
             yield 1
 
-    def encode_uX(x, l):
+    def encode(x, l):
         for s in uX_to_bin(x, l):
             yield from encode_bit(s)
 
@@ -160,10 +163,10 @@ def gen_raw_rc6(device, function, toggle=0, mode=0):
     yield -2
 
     # SB
-    yield from encode_bit('1')
+    yield from encode(1, 1)
 
     # Mode
-    yield from encode_uX(mode, 3)
+    yield from encode(mode, 3)
 
     # TB
     if toggle:
@@ -174,10 +177,10 @@ def gen_raw_rc6(device, function, toggle=0, mode=0):
         yield 2
 
     # Control
-    yield from encode_uX(device, 8)
+    yield from encode(device, 8)
 
     # Information
-    yield from encode_uX(function, 8)
+    yield from encode(function, 8)
 
     # Signal Free
     yield -6
@@ -195,7 +198,7 @@ def dec_raw_rc6(data):
         else:
             raise Exception(f"Unexpected pair {x1} and {x2}")
 
-    def decode_uX(x, l):
+    def decode(x, l):
         return bin_to_uX([decode_bit(x) for _ in range(l)])
 
     v = gen_bitified_from_raw(data, 444.0)
@@ -211,7 +214,7 @@ def dec_raw_rc6(data):
     sb = decode_bit(v)
     assert sb == '1'
 
-    mode = decode_uX(v, 3)
+    mode = decode(v, 3)
     toggle_raw = [next(v) for _ in range(4)]
     if toggle_raw == [1, 1, -1, -1]:
         toggle = 1
@@ -220,8 +223,8 @@ def dec_raw_rc6(data):
     else:
         raise Exception(f"Unexpected toggle {toggle_raw}")
 
-    device = decode_uX(v, 8)
-    function = decode_uX(v, 8)
+    device = decode(v, 8)
+    function = decode(v, 8)
 
     # verify trailing silence
     try:
@@ -232,19 +235,23 @@ def dec_raw_rc6(data):
 
     return (device, function, toggle, mode)
 
+
 @gen_raw_from_bitified_decorator(562.5)
 def gen_raw_nec(protocol, device, subdevice, function):
     """Generate a raw list from nec parameters."""
     protocol_base, protocol_suffix = (protocol.split('-') + [None])[:2]
 
+    def encode_bit(s):
+        yield 1  # burst
+        if s == '1':
+            yield -3  # one  is encoded by 3 length
+        else:
+            yield -1  # zero is encoded by 1 lengths
+
     def encode(value):
         b = uX_to_bin(value, 8)
         for s in reversed(b):
-            yield 1  # burst
-            if s == '1':
-                yield -3  # one  is encoded by 3 length
-            else:
-                yield -1  # zero is encoded by 1 lengths
+            yield from encode_bit(s)
 
     if protocol_base in ('nec1', 'necx1'):
         yield 16  # leading burst
@@ -293,7 +300,7 @@ def gen_raw_rca38(device, function):
         else:
             yield from encode_bit('1')
 
-    def encode_uX(x, l, f):
+    def encode(x, l, f):
         for s in uX_to_bin(x, l):
             yield from f(s)
 
@@ -302,12 +309,12 @@ def gen_raw_rca38(device, function):
     yield -8
 
     # Device and function
-    yield from encode_uX(device, 4, encode_bit)
-    yield from encode_uX(function, 8, encode_bit)
+    yield from encode(device, 4, encode_bit)
+    yield from encode(function, 8, encode_bit)
 
     # Reversed device and function
-    yield from encode_uX(device, 4, rev_encode_bit)
-    yield from encode_uX(function, 8, rev_encode_bit)
+    yield from encode(device, 4, rev_encode_bit)
+    yield from encode(function, 8, rev_encode_bit)
 
     # Ending burst
     yield 1

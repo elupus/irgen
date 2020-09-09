@@ -1,6 +1,7 @@
 """IR generator tool."""
 from base64 import b64encode, b64decode, decode
 from itertools import islice
+from functools import wraps
 import logging
 
 LOG = logging.getLogger(__name__)
@@ -54,18 +55,31 @@ def gen_bitified_from_raw(data, logical_bit):
         for _ in range(bits):
             yield sign
 
+def gen_raw_from_bitified(data, logical_bit):
+    """Rescales output to logical bit length."""
+    for bit in data:
+        yield bit * logical_bit
 
+
+def gen_raw_from_bitified_decorator(logical_bits):
+    """Rescales output to logical bit length."""
+    def inner_2(func):
+        @wraps(func)
+        def inner_1(*args, **kwargs):
+            yield from gen_raw_from_bitified(func(*args, **kwargs), logical_bits)
+        return inner_1
+    return inner_2
+
+@gen_raw_from_bitified_decorator(889.0)
 def gen_raw_rc5(device, function, toggle):
     """Generate a raw list from rc5 parameters."""
-    logical_bit = 889.0
-
     def encode_bit(s):
         if s == '1':
-            yield logical_bit * -1
-            yield logical_bit * 1
+            yield -1
+            yield 1
         else:
-            yield logical_bit * 1
-            yield logical_bit * -1
+            yield 1
+            yield -1
 
     def encode_uX(x, l):
         for s in uX_to_bin(x, l):
@@ -85,7 +99,7 @@ def gen_raw_rc5(device, function, toggle):
     yield from encode_uX(function % 64, 6)
 
     # trailing silence
-    yield logical_bit * -100
+    yield -100
 
 
 def dec_raw_rc5(data):
@@ -125,26 +139,25 @@ def dec_raw_rc5(data):
 
     return (address, command, int(toggle))
 
-
+@gen_raw_from_bitified_decorator(444.0)
 def gen_raw_rc6(device, function, toggle=0, mode=0):
     """Generate a raw list from rc6 parameters."""
-    logical_bit = 444.0
 
     def encode_bit(s):
         if s == '1':
-            yield logical_bit * 1
-            yield logical_bit * -1
+            yield 1
+            yield -1
         else:
-            yield logical_bit * -1
-            yield logical_bit * 1
+            yield -1
+            yield 1
 
     def encode_uX(x, l):
         for s in uX_to_bin(x, l):
             yield from encode_bit(s)
 
     # LS
-    yield logical_bit * 6
-    yield logical_bit * -2
+    yield 6
+    yield -2
 
     # SB
     yield from encode_bit('1')
@@ -154,11 +167,11 @@ def gen_raw_rc6(device, function, toggle=0, mode=0):
 
     # TB
     if toggle:
-        yield logical_bit * 2
-        yield logical_bit * -2
+        yield 2
+        yield -2
     else:
-        yield logical_bit * -2
-        yield logical_bit * 2
+        yield -2
+        yield 2
 
     # Control
     yield from encode_uX(device, 8)
@@ -167,7 +180,7 @@ def gen_raw_rc6(device, function, toggle=0, mode=0):
     yield from encode_uX(function, 8)
 
     # Signal Free
-    yield logical_bit * -6
+    yield -6
 
 
 def dec_raw_rc6(data):
@@ -219,28 +232,26 @@ def dec_raw_rc6(data):
 
     return (device, function, toggle, mode)
 
-
+@gen_raw_from_bitified_decorator(562.5)
 def gen_raw_nec(protocol, device, subdevice, function):
     """Generate a raw list from nec parameters."""
-    logical_bit = 562.5
-
     protocol_base, protocol_suffix = (protocol.split('-') + [None])[:2]
 
     def encode(value):
         b = uX_to_bin(value, 8)
         for s in reversed(b):
-            yield logical_bit  # burst
+            yield 1  # burst
             if s == '1':
-                yield logical_bit * -3  # one  is encoded by 3 length
+                yield -3  # one  is encoded by 3 length
             else:
-                yield logical_bit * -1  # zero is encoded by 1 lengths
+                yield -1  # zero is encoded by 1 lengths
 
     if protocol_base in ('nec1', 'necx1'):
-        yield logical_bit * 16  # leading burst
+        yield 16  # leading burst
     else:
-        yield logical_bit * 8   # leading burst
+        yield 8   # leading burst
 
-    yield logical_bit * -8     # space before data
+    yield -8      # space before data
 
     yield from encode(device)
     if subdevice >= 0:
@@ -260,21 +271,21 @@ def gen_raw_nec(protocol, device, subdevice, function):
     else:                           # Standard invert
         yield from encode(function ^ 0xFF)
 
-    yield logical_bit       # Trailing burst
-    yield logical_bit * -3  # Trailing zero to separate
+    yield 1   # Trailing burst
+    yield -3  # Trailing zero to separate
 
 
+@gen_raw_from_bitified_decorator(460.0)
 def gen_raw_rca38(device, function):
     """Generate a raw list from rca38 parameters."""
-    logical_bit = 460
 
     def encode_bit(s):
         if s == '1':
-            yield logical_bit * 1
-            yield logical_bit * -4
+            yield 1
+            yield -4
         else:
-            yield logical_bit * 1
-            yield logical_bit * -2
+            yield 1
+            yield -2
 
     def rev_encode_bit(s):
         if s == '1':
@@ -287,8 +298,8 @@ def gen_raw_rca38(device, function):
             yield from f(s)
 
     # Starting burst
-    yield logical_bit * 8
-    yield logical_bit * -8
+    yield 8
+    yield -8
 
     # Device and function
     yield from encode_uX(device, 4, encode_bit)
@@ -299,8 +310,8 @@ def gen_raw_rca38(device, function):
     yield from encode_uX(function, 8, rev_encode_bit)
 
     # Ending burst
-    yield logical_bit * 1
-    yield logical_bit * -16
+    yield 1
+    yield -16
 
 
 def gen_raw_general(protocol, device, subdevice, function, **kwargs):

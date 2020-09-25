@@ -36,19 +36,27 @@ def test_gen_bitified_from_raw():
         list(irgen.gen_bitified_from_raw([100, -200*1.15], 100))
 
 
-@pytest.mark.parametrize("device, function, toggle", [
+@pytest.mark.parametrize("device, function", [
+    (2, 4),
+    (5, 66)
+])
+def test_rc5_round_about(device, function):
+    data = []
+    data.extend(irgen.gen_raw_rc5(device, function, 0))
+    data.extend(irgen.gen_raw_rc5(device, function, 1))
+    x = iter(data)
+    assert irgen.dec_raw_rc5(x) == (device, function, 0)
+    assert irgen.dec_raw_rc5(x) == (device, function, 1)
+
+
+@pytest.mark.parametrize("device, function, mode", [
     (2, 4, 0),
     (5, 66, 0)
 ])
-def test_rc5_round_about(device, function, toggle):
-    data = irgen.gen_raw_rc5(device, function, toggle)
-    assert irgen.dec_raw_rc5(data) == (device, function, toggle)
-
-
-@pytest.mark.parametrize("device, function, toggle, mode", [
-    (2, 4, 0, 0),
-    (5, 66, 0, 0)
-])
-def test_rc6_round_about(device, function, toggle, mode):
-    data = irgen.gen_raw_rc6(device, function, toggle, mode)
-    assert irgen.dec_raw_rc6(data) == (device, function, toggle, mode)
+def test_rc6_round_about(device, function, mode):
+    data = []
+    data.extend(irgen.gen_raw_rc6(device, function, 0, mode))
+    data.extend(irgen.gen_raw_rc6(device, function, 1, mode))
+    x = iter(data)
+    assert irgen.dec_raw_rc6(x) == (device, function, 0, mode)
+    assert irgen.dec_raw_rc6(x) == (device, function, 1, mode)

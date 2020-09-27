@@ -47,11 +47,11 @@ def bin_to_uX(v):
 def gen_bitified_from_raw(data, logical_bit):
     """Splits durations into bitified chunks"""
     for duration in data:
-        bits = abs(int(duration / logical_bit))
+        bits = abs(round(duration / logical_bit))
         sign = 1 if duration > 0 else -1
-        error = duration % logical_bit
+        error = abs(duration) - logical_bit*bits
         if abs(error / logical_bit) > 0.1:
-            raise Exception(f"Value {duration} can't be cleanly decoded into bits of length {logical_bit}")
+            raise Exception(f"Value {duration} with error {error} can't be cleanly decoded into bits of length {logical_bit}")
         for _ in range(bits):
             yield sign
 

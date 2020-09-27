@@ -394,7 +394,7 @@ def gen_raw_from_broadlink(data):
     assert length >= 2  # a At least trailer
  
     def decode_one(x):
-        return round(x * 8192 / 269)
+        return round(x * 8192 / 269, 0)
 
     def decode_iter(x):
         sign = 1

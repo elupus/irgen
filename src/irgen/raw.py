@@ -24,7 +24,7 @@ def simplify(x):
         yield value
 
 
-def paired(x):
+def paired(x, silence=0):
     """Create pairs of on, off."""
     sign = 1
     for i in x:
@@ -35,7 +35,7 @@ def paired(x):
             yield i
             sign = -sign
     if sign < 0:
-        yield 0.0
+        yield silence
 
 
 def ltrim(x):

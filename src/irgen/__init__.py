@@ -372,11 +372,7 @@ def gen_raw_from_broadlink(data):
             yield sign * decode_one(d)
             sign = sign * -1
     
-    yield from decode_iter(islice(v, length - 3))
-
-    assert next(v) == 0x00
-    assert next(v) == 0x0d
-    assert next(v) == 0x05
+    yield from decode_iter(islice(v, length))
 
     rem = list(v)
     if any(rem):
@@ -393,6 +389,13 @@ def gen_broadlink_from_raw(data, repeat=0):
     yield from b'\x26'  # IR
     yield from repeat.to_bytes(1, byteorder='big')  # Repeat
 
+    # all broadlink ir captures will end with
+    # 0x00 0x0d 0x05, which is just a long
+    # trailing silence in the command set.
+    # On generation we just need to ensure
+    # our data ends with silence.
+    trailing_silience = -101502.0
+
     def encode_one(x):
         # v = abs(int(i / 32.84))
         v = abs(round(x * 269 / 8192))
@@ -403,16 +406,13 @@ def gen_broadlink_from_raw(data, repeat=0):
             yield from v.to_bytes(1, byteorder='big')
 
     def encode_list(x):
-        for i in raw.rtrim(raw.simplify(x)):
+        for i in raw.paired(raw.simplify(x), trailing_silience):
             yield from encode_one(i)
 
     c = bytearray(encode_list(data))
-    count = len(c) + 3
+    count = len(c)
     yield from count.to_bytes(2, byteorder='little')
     yield from c
-    yield from b'\x00'
-    yield from b'\x0d'
-    yield from b'\x05'
 
     # calculate total length for padding
     count += 4  # header+len+trailer

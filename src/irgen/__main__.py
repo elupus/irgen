@@ -29,7 +29,6 @@ def main():
                         help='Output protocol',
                         choices=[*irgen.dec_raw_protocols.keys(),
                                  'broadlink',
-                                 'broadlink_hass',
                                  'broadlink_base64',
                                  'raw',
                                  'pronto'])
@@ -106,28 +105,6 @@ def main():
         for r in codes:
             v = bytes(irgen.gen_broadlink_base64_from_raw(code['raw']))
             print(v.decode('ascii'))
-
-    elif args.output == 'broadlink_hass':
-        from base64 import b64encode
-        from collections import OrderedDict
-        from yaml import dump, safe_dump
-
-        group = dict()
-        group['entities'] = []
-        for code in codes:
-            group['entities'].append(gen_hass_entityname(code['functionname']))
-
-        switch = dict()
-        switch['switches'] = dict()
-        for code in codes:
-            v = bytes(irgen.gen_broadlink_from_raw(code['raw']))
-            entity = dict()
-            entity['command_on'] = b64encode(v).decode()
-            entity['friendlyname'] = code['functionname']
-            switch['switches'][gen_hass_entityname(
-                code['functionname'])] = entity
-        print(safe_dump(switch, allow_unicode=True, default_flow_style=False))
-        print(safe_dump(group, allow_unicode=True, default_flow_style=False))
 
     elif args.output == 'raw':
         def signed(x):

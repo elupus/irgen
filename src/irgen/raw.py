@@ -37,19 +37,18 @@ def paired(x):
     if sign < 0:
         yield 0.0
 
+
+def ltrim(x):
+    """Drop leading silence"""
+    x = iter(x)
+    for y in x:
+        if y <= 0:
+            continue
+        yield y
+        break
+    yield from x
+
+
 def rtrim(x):
-    """
-    Simplify raw string.
-
-    Drop negative trailers
-    """
-    def trimmer(y):
-        y = iter(y)
-        for z in y:
-            if z <= 0:
-                continue
-            yield z
-            break
-        yield from y
-
-    yield from reversed(list(trimmer(reversed(list(x)))))
+    """Drop trailing silence"""
+    yield from reversed(list(ltrim(reversed(list(x)))))

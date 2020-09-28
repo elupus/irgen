@@ -405,10 +405,10 @@ def gen_raw_from_broadlink(data):
                 return
             if d == 0:
                 d = int.from_bytes(islice(x, 2), byteorder='big')
-
+            
             yield sign * decode_one(d)
             sign = sign * -1
-
+    
     yield from decode_iter(islice(v, length - 2))
 
     assert next(v) == 0x0d
@@ -439,14 +439,11 @@ def gen_broadlink_from_raw(data, repeat=0):
             yield from v.to_bytes(1, byteorder='big')
 
     def encode_list(x):
-        for i in gen_simplified_from_raw(x):
+        for i in gen_paired_from_raw(gen_simplified_from_raw(x)):
             yield from encode_one(i)
 
     c = bytearray(encode_list(data))
     count = len(c) + 2
-    if count % 2:
-        count += 1
-        c += b'\x00'
     yield from count.to_bytes(2, byteorder='little')
     yield from c
     yield from b'\x0d'

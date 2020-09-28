@@ -444,6 +444,9 @@ def gen_broadlink_from_raw(data, repeat=0):
 
     c = bytearray(encode_list(data))
     count = len(c) + 2
+    if count % 2:
+        count += 1
+        c += b'\x00'
     yield from count.to_bytes(2, byteorder='little')
     yield from c
     yield from b'\x0d'

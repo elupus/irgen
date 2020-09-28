@@ -1,3 +1,4 @@
+from base64 import b64decode
 import irgen
 import pytest
 
@@ -11,11 +12,17 @@ def test_gen_paired_from_raw():
     assert list(irgen.gen_paired_from_raw(
         [0.0, -1.0, -1.0, 1.0])) == [0.0, -1.0, 0.0, -1.0, 1.0, 0.0]
 
-def test_broadlink_decode_encode():
-    data = b"JgAcAB0dOjo6HR0dHR0dHR0dHR0dHR0dHTodAAtnDQUAAAAAAAAAAAAAAAA="
+
+@pytest.mark.parametrize("data", [
+    b"JgAcAB0dOjo6HR0dHR0dHR0dHR0dHR0dHTodAAtnDQUAAAAAAAAAAAAAAAA=",
+    b"JgA6AJdPJhwPHCYcJxw+HAACGxwOHA8cDhwPHA8bDxwPGwAHIxw+HFYcJxw+HCYcPxs/HCYcJwAChJ4ADQUAAAAAAAAAAAAAAAAAAA==",
+])
+def test_broadlink_decode_encode(data):
     raw  = list(irgen.gen_raw_from_broadlink_base64(data))
     data2 = bytes(irgen.gen_broadlink_base64_from_raw(raw))
-    assert data == data2
+    assert b64decode(data).hex() == b64decode(data2).hex()
+
+
 
 def test_rca38_decode_encode():
     """
@@ -60,3 +67,12 @@ def test_rc6_round_about(device, function, mode):
     x = iter(data)
     assert irgen.dec_raw_rc6(x) == (device, function, 0, mode)
     assert irgen.dec_raw_rc6(x) == (device, function, 1, mode)
+
+
+@pytest.mark.parametrize("input, output", [
+    ([1, -1], [1, -1]),
+    ([1, -1, 1], [1, -1, 1]),
+    ([-2, 1, -1, 1], [1, -1, 1]),
+])
+def test_simplified(input, output):
+    assert list(irgen.gen_simplified_from_raw(input)) == output

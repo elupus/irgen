@@ -1,5 +1,5 @@
 import irgen
-
+from . import raw
 
 def gen_hass_entityname(text):
     text = text.lower()
@@ -85,8 +85,8 @@ def main():
         code = {
             'functionname': '{}({})'.format(args.input,
                                             ','.join(map(str, args.data))),
-            'raw': irgen.gen_paired_from_raw(
-                irgen.gen_simplified_from_raw(
+            'raw': raw.paired(
+                raw.simplify(
                 irgen.gen_raw_general(args.input, *args.data)))
         }
         codes.append(code)

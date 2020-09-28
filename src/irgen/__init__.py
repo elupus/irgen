@@ -3,6 +3,7 @@ from base64 import b64encode, b64decode, decode
 from itertools import islice
 from functools import wraps
 import logging
+from . import raw
 
 LOG = logging.getLogger(__name__)
 
@@ -344,61 +345,6 @@ def gen_raw_general(protocol, device, subdevice, function, **kwargs):
                                  function=int(function))
 
 
-def gen_simplified_from_raw(x):
-    """
-    Simplify raw string.
-
-    Combine successive same sign value, drop zeros, drop leading negative
-    """
-    value = 0
-    for i in x:
-        if i == 0:
-            continue
-        elif value == 0:
-            if i > 0:
-                value = i
-            else:
-                pass  # leading negative
-        elif (value > 0) == (i > 0):
-            value += i
-        else:
-            yield value
-            value = i
-    if value != 0:
-        yield value
-
-
-def gen_paired_from_raw(x):
-    """Create pairs of on, off."""
-    sign = 1
-    for i in x:
-        if (i < 0) ^ (sign < 0):
-            yield 0.0
-            yield i
-        else:
-            yield i
-            sign = -sign
-    if sign < 0:
-        yield 0.0
-
-def gen_trimmed_trailer(x):
-    """
-    Simplify raw string.
-
-    Drop negative trailers
-    """
-    def trimmer(y):
-        y = iter(y)
-        for z in y:
-            if z <= 0:
-                continue
-            yield z
-            break
-        yield from y
-
-    yield from reversed(list(trimmer(reversed(list(x)))))
-
-
 def gen_raw_from_broadlink(data):
     """Genearate raw values from broadling data."""
     v = iter(data)
@@ -457,7 +403,7 @@ def gen_broadlink_from_raw(data, repeat=0):
             yield from v.to_bytes(1, byteorder='big')
 
     def encode_list(x):
-        for i in gen_trimmed_trailer(gen_simplified_from_raw(x)):
+        for i in raw.rtrim(raw.simplify(x)):
             yield from encode_one(i)
 
     c = bytearray(encode_list(data))
@@ -519,7 +465,7 @@ def gen_pronto_from_raw_int(seq1, seq2, base=None, freq=None):
     yield base
 
     def fixup(x):
-        return list(gen_paired_from_raw(gen_simplified_from_raw(x)))
+        return list(raw.paired(raw.simplify(x)))
 
     simple1 = fixup(seq1)
     simple2 = fixup(seq2)

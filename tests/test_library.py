@@ -2,16 +2,6 @@ from base64 import b64decode
 import irgen
 import pytest
 
-def test_gen_paired_from_raw():
-    assert list(irgen.gen_paired_from_raw(
-        [-1.0])) == [0.0, -1.0]
-    assert list(irgen.gen_paired_from_raw(
-        [0.0 -1.0])) == [0.0, -1.0]
-    assert list(irgen.gen_paired_from_raw(
-        [0.0, -1.0, -1.0])) == [0.0, -1.0, 0.0, -1.0]
-    assert list(irgen.gen_paired_from_raw(
-        [0.0, -1.0, -1.0, 1.0])) == [0.0, -1.0, 0.0, -1.0, 1.0, 0.0]
-
 
 @pytest.mark.parametrize("data", [
     b"JgDgAAABKpEVERQRFREUERURFBEVERQRFTUVNhQ2FTYUNhU1FTYUNhURFBEVERQ2FTYUERURFBEVNRU2FDYVERQRFTUVNhQ2FQAFJAABKkkUAAxqAAEqRhcADGoAASpJFAAMagABK0gVAAxqAAEqSRQADGsAASpIFQAMagABKkcWAAxqAAEqSRQADGoAASpJFAAMagABK0YXAAxqAAEqSRQADGoAAStIFQAMagABK0gVAAxpAAErSBUADGoAASpIFQAMagABKkkUAAxrAAEqSRQADGoAAStIFQAMagABK0gVAA0FAAAAAAAAAAA=",
@@ -70,20 +60,3 @@ def test_rc6_round_about(device, function, mode):
     x = iter(data)
     assert irgen.dec_raw_rc6(x) == (device, function, 0, mode)
     assert irgen.dec_raw_rc6(x) == (device, function, 1, mode)
-
-
-@pytest.mark.parametrize("input, output", [
-    ([1, -1], [1, -1]),
-    ([1, -1, 1], [1, -1, 1]),
-    ([-2, 1, -1, 1], [1, -1, 1]),
-])
-def test_simplified(input, output):
-    assert list(irgen.gen_simplified_from_raw(input)) == output
-
-
-@pytest.mark.parametrize("input, output", [
-    ([1, -1], [1]),
-    ([1, -1, 1], [1, -1, 1]),
-])
-def test_trim_trailer(input, output):
-    assert list(irgen.gen_trimmed_trailer(input)) == output

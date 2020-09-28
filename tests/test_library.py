@@ -14,13 +14,16 @@ def test_gen_paired_from_raw():
 
 
 @pytest.mark.parametrize("data", [
-    b"JgAcAB0dOjo6HR0dHR0dHR0dHR0dHR0dHTodAAtnDQUAAAAAAAAAAAAAAAA=",
+    b"JgDgAAABKpEVERQRFREUERURFBEVERQRFTUVNhQ2FTYUNhU1FTYUNhURFBEVERQ2FTYUERURFBEVNRU2FDYVERQRFTUVNhQ2FQAFJAABKkkUAAxqAAEqRhcADGoAASpJFAAMagABK0gVAAxqAAEqSRQADGsAASpIFQAMagABKkcWAAxqAAEqSRQADGoAASpJFAAMagABK0YXAAxqAAEqSRQADGoAAStIFQAMagABK0gVAAxpAAErSBUADGoAASpIFQAMagABKkkUAAxrAAEqSRQADGoAAStIFQAMagABK0gVAA0FAAAAAAAAAAA=",
     b"JgA6AJdPJhwPHCYcJxw+HAACGxwOHA8cDhwPHA8bDxwPGwAHIxw+HFYcJxw+HCYcPxs/HCYcJwAChJ4ADQUAAAAAAAAAAAAAAAAAAA==",
+    b"JgBYAFYhDh4MEBANDCEaEA8ODw4PDg8ODw4PDg8ODw4PDg4PDg8eDg0eDBEOAArPViEMHwwRDg8NIBoQDg8ODw4PDg8ODw4PDg8PDg8ODg8PDh4NDh8ODgwADQU=",
+    b"JgBYAAABKJURFBITEjgVERMSFBESExIUEjgSOBQREzcSOBI4EzcWNRITEhMWDxM3FRESExITEhMSOBI4EjkSExI4ETkRORI4EwAFEAABKEsTAAxPAAEoSxMADQU=",
+    b"JgAaAB0dOh0dHR0dHR0dHR0dHR0dOh0dOh0dAA0FAAAAAAAAAAAAAAAAAAA=",
 ])
 def test_broadlink_decode_encode(data):
     raw  = list(irgen.gen_raw_from_broadlink_base64(data))
     data2 = bytes(irgen.gen_broadlink_base64_from_raw(raw))
-    assert b64decode(data).hex() == b64decode(data2).hex()
+    assert  b64decode(data2).hex() == b64decode(data).hex()
 
 
 
@@ -76,3 +79,11 @@ def test_rc6_round_about(device, function, mode):
 ])
 def test_simplified(input, output):
     assert list(irgen.gen_simplified_from_raw(input)) == output
+
+
+@pytest.mark.parametrize("input, output", [
+    ([1, -1], [1]),
+    ([1, -1, 1], [1, -1, 1]),
+])
+def test_trim_trailer(input, output):
+    assert list(irgen.gen_trimmed_trailer(input)) == output

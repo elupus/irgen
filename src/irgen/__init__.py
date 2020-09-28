@@ -381,6 +381,23 @@ def gen_paired_from_raw(x):
     if sign < 0:
         yield 0.0
 
+def gen_trimmed_trailer(x):
+    """
+    Simplify raw string.
+
+    Drop negative trailers
+    """
+    def trimmer(y):
+        y = iter(y)
+        for z in y:
+            if z <= 0:
+                continue
+            yield z
+            break
+        yield from y
+
+    yield from reversed(list(trimmer(reversed(list(x)))))
+
 
 def gen_raw_from_broadlink(data):
     """Genearate raw values from broadling data."""
@@ -391,7 +408,7 @@ def gen_raw_from_broadlink(data):
     assert code == 0x26  # IR
 
     length = int.from_bytes(islice(v, 2), byteorder='little')
-    assert length >= 2  # a At least trailer
+    assert length >= 3  # a At least trailer
  
     def decode_one(x):
         return round(x * 8192 / 269, 0)
@@ -409,8 +426,9 @@ def gen_raw_from_broadlink(data):
             yield sign * decode_one(d)
             sign = sign * -1
     
-    yield from decode_iter(islice(v, length - 2))
+    yield from decode_iter(islice(v, length - 3))
 
+    assert next(v) == 0x00
     assert next(v) == 0x0d
     assert next(v) == 0x05
 
@@ -439,20 +457,22 @@ def gen_broadlink_from_raw(data, repeat=0):
             yield from v.to_bytes(1, byteorder='big')
 
     def encode_list(x):
-        for i in gen_paired_from_raw(gen_simplified_from_raw(x)):
+        for i in gen_trimmed_trailer(gen_simplified_from_raw(x)):
             yield from encode_one(i)
 
     c = bytearray(encode_list(data))
-    count = len(c) + 2
+    count = len(c) + 3
     yield from count.to_bytes(2, byteorder='little')
     yield from c
+    yield from b'\x00'
     yield from b'\x0d'
     yield from b'\x05'
 
     # calculate total length for padding
     count += 4  # header+len+trailer
     count += 4  # rm.send_data() 4 byte header (not seen here)
-    yield from bytearray(16 - (count % 16))
+    if count % 16:
+        yield from bytearray(16 - (count % 16))
 
 
 def gen_broadlink_base64_from_raw(data, repeat=0):

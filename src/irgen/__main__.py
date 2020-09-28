@@ -146,7 +146,12 @@ def main():
     elif args.output in irgen.dec_raw_protocols:
         parser = irgen.dec_raw_protocols[args.output]
         for code in codes:
-            print(parser(list(code['raw'])))
+            d = iter(list(code['raw']))
+            while True:
+                try:
+                    print(parser(d))
+                except StopIteration:
+                    break
 
 if __name__ == "__main__":
     main()

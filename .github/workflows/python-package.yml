@@ -38,6 +38,6 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        pytest --cov src -cov-report=xml
+        pytest --cov src --cov-report=xml
     - uses: codecov/codecov-action@v2
       if: matrix.python-version == 3.9

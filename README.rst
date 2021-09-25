@@ -6,12 +6,12 @@ This module support conversion and generation of IR formats
 Status
 ======
 
-.. image:: https://travis-ci.org/elupus/irgen.svg?branch=master
-    :target: https://travis-ci.org/elupus/irgen
+.. image:: https://github.com/elupus/irgen/actions/workflows/python-package.yml/badge.svg
+    :target: https://github.com/elupus/irgen/actions/workflows/python-package.yml
 
-.. image:: https://coveralls.io/repos/github/elupus/irgen/badge.svg?branch=master
-    :target: https://coveralls.io/github/elupus/irgen?branch=master
-
+.. image:: https://codecov.io/gh/elupus/irgen/branch/master/graph/badge.svg?token=GRDL7z8fjS
+    :target: https://codecov.io/gh/elupus/irgen
+    
 
 Input Formats
 =============

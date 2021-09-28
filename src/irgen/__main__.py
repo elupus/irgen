@@ -1,4 +1,6 @@
+import itertools
 import irgen
+import sys
 from . import raw
 
 def gen_hass_entityname(text):
@@ -125,10 +127,15 @@ def main():
         for code in codes:
             d = iter(list(code['raw']))
             while True:
+                b, d = itertools.tee(d)
                 try:
-                    print(parser(d))
+                    print(parser(b, protocol=args.output))
+                    d = b
                 except StopIteration:
                     break
+                except AssertionError as exc:
+                    print( "Error '{}' while decoding {}".format(str(exc), list(d)), file=sys.stderr )
+
 
 if __name__ == "__main__":
     main()

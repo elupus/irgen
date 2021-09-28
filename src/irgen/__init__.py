@@ -44,18 +44,19 @@ def uX_to_bin(v, x):
 def bin_to_uX(v):
     return int("".join(v), 2)
  
-
-def gen_bitified_from_raw(data, logical_bit):
+def gen_bitstream_from_raw(data, logical_bit):
     """Splits durations into bitified chunks"""
     for duration in data:
         bits = abs(round(duration / logical_bit))
         sign = 1 if duration > 0 else -1
-        error = abs(duration) - logical_bit*bits
-        if abs(error / logical_bit) > 0.1:
-            raise Exception(f"Value {duration} with error {error} can't be cleanly decoded into bits of length {logical_bit}")
         for _ in range(bits):
             yield sign
 
+
+def gen_bitified_from_raw(data, logical_bit):
+    """Splits durations into bitified chunks"""
+    for duration in data:
+        yield round(duration / logical_bit)
 
 def gen_raw_from_bitified(data, logical_bit):
     """Rescales output to logical bit length."""
@@ -105,8 +106,8 @@ def gen_raw_rc5(device, function, toggle):
     yield -100
 
 
-def dec_raw_rc5(data):
-    v = gen_bitified_from_raw(data, 889.0)
+def dec_raw_rc5(data, **kwargs):
+    v = gen_bitstream_from_raw(data, 889.0)
 
     def decode_bit(x):
         x1 = next(x)
@@ -187,7 +188,7 @@ def gen_raw_rc6(device, function, toggle=0, mode=0):
     yield -6
 
 
-def dec_raw_rc6(data):
+def dec_raw_rc6(data, **kwargs):
 
     def decode_bit(x):
         x1 = next(x)
@@ -202,7 +203,7 @@ def dec_raw_rc6(data):
     def decode(x, l):
         return bin_to_uX([decode_bit(x) for _ in range(l)])
 
-    v = gen_bitified_from_raw(data, 444.0)
+    v = gen_bitstream_from_raw(data, 444.0)
 
     # LS
     while next(v) == -1:
@@ -237,8 +238,73 @@ def dec_raw_rc6(data):
     return (device, function, toggle, mode)
 
 
+def dec_raw_nec(data, protocol=None, **kwargs):
+    """Decode raw nec format"""
+    protocol_base, protocol_suffix = (protocol.split('-') + [None])[:2]
+
+    def decode_bit(x):
+        x1 = next(x)
+        x2 = next(x)
+        assert x1 == 1, "Bit burst unexpected"
+        assert x2 in (-1, -3), "Bit value unexpected {}".format(x2)
+        if x2 == -3:
+            return '1'
+        else:
+            return '0'
+
+    def decode(x):
+        return bin_to_uX(reversed([decode_bit(x) for _ in range(8)]))
+
+    if protocol_base in ('nec1', 'necx1'):
+        leading_burst_count = 16
+    else:
+        leading_burst_count = 8
+
+    data = raw.simplify(data)
+    leading_burst = next(data)
+    logical_bit = leading_burst / leading_burst_count
+
+    assert abs((logical_bit - 562.5) / 562.5) < 0.2, "Leading burst out of range, logical_bit {}".format(logical_bit)
+
+    data = gen_bitified_from_raw(data, logical_bit)
+
+    space = next(data)
+    assert space in (-8, -4), "Space after burst failed with value {} with logical_bit {}".format(space, logical_bit)
+
+
+    if space == -8:
+        # Normal data
+        device = decode(data)
+        device_2 = decode(data)
+
+        if protocol_base.startswith("necx"):
+            device |= device_2 << 8
+        else:
+            assert device_2 == device ^ 0xFF, "Not expected inverted device data {:02X} {:02X}".format(device, device_2)
+
+        function = decode(data)
+        function_2 = decode(data)
+        if protocol_suffix == 'y1':
+            assert (function ^ 0x7F) == function_2, "Not yamaha special version 1: {:02X} {:02X}".format(function, function_2)
+        elif protocol_suffix == 'y2':
+            assert (function ^ 0xFE) == function_2, "Not yamaha special version 2: {:02X} {:02X}".format(function, function_2)
+        elif protocol_suffix == 'y3':
+            assert (function ^ 0x7E) == function_2, "Not yamaha special version 2: {:02X} {:02X}".format(function, function_2)
+        elif protocol_suffix == 'f16':
+            function |= function_2 << 8
+        else:
+            assert (function ^ 0xFF) == function_2, "Not expected inverted data {:02X} {:02X}".format(function, function_2)
+
+        return (device, function, 0)
+    else:
+        # Repeat
+        eos = next(data)
+        assert eos == 1, "Invalid end of space for repeat {}".format(eos)
+        return (0, 0, 1)
+
+
 @gen_raw_from_bitified_decorator(562.5)
-def gen_raw_nec(protocol, device, subdevice, function):
+def gen_raw_nec(protocol, device, function):
     """Generate a raw list from nec parameters."""
     protocol_base, protocol_suffix = (protocol.split('-') + [None])[:2]
 
@@ -261,10 +327,12 @@ def gen_raw_nec(protocol, device, subdevice, function):
 
     yield -8      # space before data
 
-    yield from encode(device)
-    if subdevice >= 0:
-        yield from encode(subdevice)
+    yield from encode(device & 0xFF)
+    device_high = (device >> 8) & 0xFF
+    if protocol_base.startswith("necx"):
+        yield from encode(device_high)
     else:
+        assert device_high == 0, "16 bit device not supported"
         yield from encode(~device)
 
     yield from encode(function & 0xFF)
@@ -322,27 +390,26 @@ def gen_raw_rca38(device, function):
     yield -16
 
 
-def gen_raw_general(protocol, device, subdevice, function, **kwargs):
+def gen_raw_general(protocol, device, function, **kwargs):
     if protocol.lower() in gen_raw_nec_protocols:
         yield from gen_raw_nec(protocol.lower(),
-                               int(device, 0),
-                               int(subdevice, 0),
-                               int(function, 0))
+                               int(str(device), 0),
+                               int(str(function), 0))
 
     if protocol.lower() in gen_raw_rc5_protocols:
-        yield from gen_raw_rc5(device=int(device, 0),
-                               function=int(function, 0),
+        yield from gen_raw_rc5(device=int(str(device), 0),
+                               function=int(str(function), 0),
                                toggle=kwargs.get("toggle", 0))
 
     if protocol.lower() in gen_raw_rc6_protocols:
-        yield from gen_raw_rc6(device=int(device, 0),
-                               function=int(function, 0),
+        yield from gen_raw_rc6(device=int(str(device), 0),
+                               function=int(str(function), 0),
                                toggle=kwargs.get("toggle", 0),
                                mode=kwargs.get("mode", 0))
 
     if protocol.lower() in gen_raw_rca38_protocols:
-        yield from gen_raw_rca38(device=int(device, 0),
-                                 function=int(function, 0))
+        yield from gen_raw_rca38(device=int(str(device), 0),
+                                 function=int(str(function), 0))
 
 
 def gen_raw_from_broadlink(data):
@@ -487,7 +554,14 @@ def gen_pronto_from_raw(seq1, seq2, base=None, freq=None):
         yield "{0:0{1}x}".format(value, 4)
 
 
+dec_raw_protocols_nec = {
+    protocol: dec_raw_nec
+    for protocol in gen_raw_nec_protocols
+}
+
 dec_raw_protocols = {
     'rc5': dec_raw_rc5,
     'rc6': dec_raw_rc6,
 }
+
+dec_raw_protocols.update(dec_raw_protocols_nec)

@@ -25,7 +25,7 @@ necx1-y3,necx1-f16,necx2,necx2-y1,necx2-y2,necx2-y3,necx2-f16
 
 .. code-block:: bash
 
-    irgen -i nec1 -d 16 0 0 -o raw
+    irgen -i nec1 -d 16 0 -o raw
 
 
 Philips RC-5 Protocol
@@ -33,7 +33,7 @@ Philips RC-5 Protocol
 
 .. code-block:: bash
 
-    irgen -i rc5 -d 16 -1 0 -o raw
+    irgen -i rc5 -d 16 0 -o raw
 
 
 Philips RC-6 Protocol
@@ -41,14 +41,14 @@ Philips RC-6 Protocol
 
 .. code-block:: bash
 
-    irgen -i rc6 -d 16 -1 0 -o raw
+    irgen -i rc6 -d 16 0 -o raw
 
 RCA RCA-38 Protocol
 ---------------------
 
 .. code-block:: bash
 
-     irgen -i rca38 -d 15 -1 0 -o raw
+     irgen -i rca38 -d 15 0 -o raw
 
 
 Raw
@@ -86,8 +86,8 @@ the latter being base64 encoded.
 
 .. code-block:: bash
 
-    irgen -i rc5 -d 16 -1 0 -o broadlink
-    irgen -i rc5 -d 16 -1 0 -o broadlink_base64
+    irgen -i rc5 -d 16 0 -o broadlink
+    irgen -i rc5 -d 16 0 -o broadlink_base64
 
 
 Console

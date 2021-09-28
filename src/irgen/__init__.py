@@ -325,24 +325,24 @@ def gen_raw_rca38(device, function):
 def gen_raw_general(protocol, device, subdevice, function, **kwargs):
     if protocol.lower() in gen_raw_nec_protocols:
         yield from gen_raw_nec(protocol.lower(),
-                               int(device),
-                               int(subdevice),
-                               int(function))
+                               int(device, 0),
+                               int(subdevice, 0),
+                               int(function, 0))
 
     if protocol.lower() in gen_raw_rc5_protocols:
-        yield from gen_raw_rc5(device=int(device),
-                               function=int(function),
+        yield from gen_raw_rc5(device=int(device, 0),
+                               function=int(function, 0),
                                toggle=kwargs.get("toggle", 0))
 
     if protocol.lower() in gen_raw_rc6_protocols:
-        yield from gen_raw_rc6(device=int(device),
-                               function=int(function),
+        yield from gen_raw_rc6(device=int(device, 0),
+                               function=int(function, 0),
                                toggle=kwargs.get("toggle", 0),
                                mode=kwargs.get("mode", 0))
 
     if protocol.lower() in gen_raw_rca38_protocols:
-        yield from gen_raw_rca38(device=int(device),
-                                 function=int(function))
+        yield from gen_raw_rca38(device=int(device, 0),
+                                 function=int(function, 0))
 
 
 def gen_raw_from_broadlink(data):

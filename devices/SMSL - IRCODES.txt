@@ -1,0 +1,25 @@
+SMSL - NEC Extended Format
+==========================
+
+The SMSL lines of products uses these NEC32 extended format ir codes.
+
+| Remote | Address | Address (rev) |
+| ------ | ------- | ------------- |
+| A      | 3412h   | 482Ch         |
+| B      | 3512h   | 48ACh         |
+| C      | 3612h   | 486Ch         |
+
+| Command     | Hex | Hex (rev+inv) |
+| ----------- | --- | ------------- |
+| POWER ON    | 1h   | 807Fh         |
+| DIAL UP     | 2h   | 40BFh         |
+| DIAL DOWN   | 3h   | 609Fh         |
+| DIAL RIGHT  | 4h   | A05Fh         |
+| DIAL LEFT   | 5h   | C03Fh         |
+| DIAL MIDDLE | 6h   | 20DFh         |
+| INPUT       | 7h   | E01Fh         |
+| EQ          | 8h   | 10EFh         |
+| MUTE        | 9h   | 906Fh         |
+
+
+Note.. I feels like address aught to be 1234h. But i can't see any fault in my current decoding of this

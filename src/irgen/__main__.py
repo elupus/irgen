@@ -2,6 +2,7 @@ import itertools
 import irgen
 import sys
 from . import raw
+from irgen.exceptions import IrgenInputError
 
 def gen_hass_entityname(text):
     text = text.lower()
@@ -139,7 +140,7 @@ def main():
                     d = b
                 except StopIteration:
                     break
-                except AssertionError as exc:
+                except IrgenInputError as exc:
                     print( "Error '{}' while decoding {}".format(str(exc), list(d)), file=sys.stderr )
 
 

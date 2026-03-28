@@ -4,6 +4,7 @@ from itertools import islice
 from functools import wraps
 import logging
 from . import raw
+from .exceptions import IrgenInputError
 
 LOG = logging.getLogger(__name__)
 
@@ -117,7 +118,7 @@ def dec_raw_rc5(data, **kwargs):
         elif x1 > 0 and x2 < 0:
             return '0'
         else:
-            raise Exception(f"Unexpected pair {x1} and {x2}")
+            raise IrgenInputError(f"Unexpected pair {x1} and {x2}")
 
     def decode(x, l):
         return bin_to_uX([decode_bit(x) for _ in range(l)])
@@ -137,7 +138,8 @@ def dec_raw_rc5(data, **kwargs):
     # verify trailing silence
     try:
         for _ in range(100):
-            assert next(v) == -1
+            if not next(v) == -1:
+                raise IrgenInputError(f"Unexpected non-silence after command: {v}")
     except StopIteration:
         pass
 
@@ -198,7 +200,7 @@ def dec_raw_rc6(data, **kwargs):
         elif x1 > 0 and x2 < 0:
             return '1'
         else:
-            raise Exception(f"Unexpected pair {x1} and {x2}")
+            raise IrgenInputError(f"Unexpected pair {x1} and {x2}")
 
     def decode(x, l):
         return bin_to_uX([decode_bit(x) for _ in range(l)])
@@ -209,12 +211,15 @@ def dec_raw_rc6(data, **kwargs):
     while next(v) == -1:
         pass
     for _ in range(5):
-        assert next(v) == 1
+        if not next(v) == 1:
+            raise IrgenInputError("Expected leading burst")
     for _ in range(2):
-        assert next(v) == -1
+        if not next(v) == -1:
+            raise IrgenInputError("Expected leading space")
 
     sb = decode_bit(v)
-    assert sb == '1'
+    if sb != '1':
+        raise IrgenInputError(f"Expected start bit '1', got '{sb}'")
 
     mode = decode(v, 3)
     toggle_raw = [next(v) for _ in range(4)]
@@ -231,7 +236,9 @@ def dec_raw_rc6(data, **kwargs):
     # verify trailing silence
     try:
         for _ in range(6):
-            assert next(v) == -1
+            x = next(v)
+            if x != -1:
+                raise IrgenInputError(f"Expected trailing silence -1, got {x}")
     except StopIteration:
         pass
 
@@ -245,8 +252,10 @@ def dec_raw_nec(data, protocol=None, **kwargs):
     def decode_bit(x):
         x1 = next(x)
         x2 = next(x)
-        assert x1 == 1, "Bit burst unexpected"
-        assert x2 in (-1, -3), "Bit value unexpected {}".format(x2)
+        if x1 != 1:
+            raise IrgenInputError("Bit burst unexpected")
+        if x2 not in (-1, -3):
+            raise IrgenInputError(f"Bit value unexpected {x2}")
         if x2 == -3:
             return '1'
         else:
@@ -264,12 +273,14 @@ def dec_raw_nec(data, protocol=None, **kwargs):
     leading_burst = next(data)
     logical_bit = leading_burst / leading_burst_count
 
-    assert abs((logical_bit - 562.5) / 562.5) < 0.2, "Leading burst out of range, logical_bit {}".format(logical_bit)
+    if abs((logical_bit - 562.5) / 562.5) >= 0.2:
+        raise IrgenInputError("Leading burst out of range, logical_bit {}".format(logical_bit))
 
     data = gen_bitified_from_raw(data, logical_bit)
 
     space = next(data)
-    assert space in (-8, -4), "Space after burst failed with value {} with logical_bit {}".format(space, logical_bit)
+    if space not in (-8, -4):
+        raise IrgenInputError("Space after burst failed with value {} with logical_bit {}".format(space, logical_bit))
 
 
     if space == -8:
@@ -280,26 +291,32 @@ def dec_raw_nec(data, protocol=None, **kwargs):
         if protocol_base.startswith("necx"):
             device |= device_2 << 8
         else:
-            assert device_2 == device ^ 0xFF, "Not expected inverted device data {:02X} {:02X}".format(device, device_2)
+            if device_2 != device ^ 0xFF:
+                raise IrgenInputError("Not expected inverted device data {:02X} {:02X}".format(device, device_2))
 
         function = decode(data)
         function_2 = decode(data)
         if protocol_suffix == 'y1':
-            assert (function ^ 0x7F) == function_2, "Not yamaha special version 1: {:02X} {:02X}".format(function, function_2)
+            if (function ^ 0x7F) != function_2:
+                raise IrgenInputError("Not yamaha special version 1: {:02X} {:02X}".format(function, function_2))
         elif protocol_suffix == 'y2':
-            assert (function ^ 0xFE) == function_2, "Not yamaha special version 2: {:02X} {:02X}".format(function, function_2)
+            if (function ^ 0xFE) != function_2:
+                raise IrgenInputError("Not yamaha special version 2: {:02X} {:02X}".format(function, function_2))
         elif protocol_suffix == 'y3':
-            assert (function ^ 0x7E) == function_2, "Not yamaha special version 2: {:02X} {:02X}".format(function, function_2)
+            if (function ^ 0x7E) != function_2:
+                raise IrgenInputError("Not yamaha special version 2: {:02X} {:02X}".format(function, function_2))
         elif protocol_suffix == 'f16':
             function |= function_2 << 8
         else:
-            assert (function ^ 0xFF) == function_2, "Not expected inverted data {:02X} {:02X}".format(function, function_2)
+            if (function ^ 0xFF) != function_2:
+                raise IrgenInputError("Not expected inverted data {:02X} {:02X}".format(function, function_2))
 
         return (device, function, 0)
     else:
         # Repeat
         eos = next(data)
-        assert eos == 1, "Invalid end of space for repeat {}".format(eos)
+        if eos != 1:
+            raise IrgenInputError("Invalid end of space for repeat {}".format(eos))
         return (0, 0, 1)
 
 
@@ -332,7 +349,8 @@ def gen_raw_nec(protocol, device, function):
     if protocol_base.startswith("necx"):
         yield from encode(device_high)
     else:
-        assert device_high == 0, "16 bit device not supported"
+        if device_high != 0:
+            raise IrgenInputError("16 bit device not supported")
         yield from encode(~device)
 
     yield from encode(function & 0xFF)
@@ -418,10 +436,12 @@ def gen_raw_from_broadlink(data):
     code = next(v)
     next(v)  # repeat
 
-    assert code == 0x26  # IR
+    if code != 0x26:
+        raise IrgenInputError(f"Expected broadlink IR code 0x26, got {code:#x}")
 
     length = int.from_bytes(islice(v, 2), byteorder='little')
-    assert length >= 3  # a At least trailer
+    if length < 3:
+        raise IrgenInputError("Broadlink data too short, expected at least trailer length 3")
  
     def decode_one(x):
         return round(x * 8192 / 269, 0)
@@ -499,7 +519,8 @@ def gen_raw_from_pronto(data):
 
     v = iter(data)
     zero = next(v)
-    assert zero == 0
+    if zero != 0:
+        raise IrgenInputError(f"Pronto data must start with 0, got {zero}")
     base = next(v)
     freq = 1.0 / (base * clock)
 

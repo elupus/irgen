@@ -1,5 +1,5 @@
 """IR generator tool."""
-from base64 import b64encode, b64decode, decode
+from base64 import b64encode, b64decode
 from itertools import islice
 from functools import wraps
 import logging
@@ -441,9 +441,9 @@ def gen_raw_from_broadlink(data):
     
     yield from decode_iter(islice(v, length))
 
-    rem = list(v)
+    rem = bytes(v)
     if any(rem):
-        LOG.warning("Ignored extra data: %s", rem)
+        LOG.warning("Ignored extra data: %s", rem.hex())
 
 
 def gen_raw_from_broadlink_base64(data):

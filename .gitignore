@@ -13,5 +13,4 @@ htmlcov
 include
 lib
 pyvenv.cfg
-src
 venv

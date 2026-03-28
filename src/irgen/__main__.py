@@ -70,6 +70,12 @@ def main():
             'raw': [float(x) for x in args.data]
         }
         codes.append(code)
+    elif args.input == 'broadlink':
+        code = {
+            'functionname': 'broadlink',
+            'raw': irgen.gen_raw_from_broadlink(bytes.fromhex(args.data[0]))
+        }
+        codes.append(code)
     elif args.input == 'broadlink_base64':
         code = {
             'functionname': 'base64',

@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "irgen"
+version = "0.2.0"
+authors = [{name = "Joakim Plate"}]
+license = "MIT"
+description = "A python tool for generating and converting ir formats"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: Plugins",
+]
+urls = {Homepage = "https://github.com/elupus/irgen"}
+requires-python = ">3.6"
+dependencies = ["requests"]
+
+[project.readme]
+file = "README.rst"
+content-type = "text/x-rst"
+
+[project.optional-dependencies]
+tests = ["pytest>3.6.4", "pytest-cov<2.6", "coveralls"]
+
+[project.scripts]
+irgen = "irgen.__main__:main"
+
